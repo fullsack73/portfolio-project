@@ -1,10 +1,10 @@
-import MyComponent from "./MyComponent.jsx";
+import StockChart from "./StockChart.jsx";
 
 function App() {
 
   return (
     <div>
-      <MyComponent />
+      <StockChart />
     </div>
   );
 
