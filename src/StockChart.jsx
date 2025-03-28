@@ -1,18 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
+import DateInput from './DateInput.jsx';
 
 function StockChart() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const fetchData = (startDate = null, endDate = null) => {
+    setLoading(true);
+    let url = 'http://127.0.0.1:5000/get-data';
+    if (startDate && endDate) {
+      url += `?start_date=${startDate}&end_date=${endDate}`;
+    }
+
     console.log('Attempting to fetch data...');
-    fetch('http://127.0.0.1:5000/get-data', {
+    fetch(url, {
       method: 'GET',
+      mode: 'cors',
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
       }
     })
       .then((response) => {
@@ -32,7 +41,15 @@ function StockChart() {
         setError(error.message);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
+
+  const handleDateRangeChange = (startDate, endDate) => {
+    fetchData(startDate, endDate);
+  };
 
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -48,6 +65,7 @@ function StockChart() {
   return (
     <div>
       <h1>Apple Stock Data</h1>
+      <DateInput onDateRangeChange={handleDateRangeChange} />
       <Plot
         data={[
           {
