@@ -27,7 +27,6 @@ function TickerInput({ onTickerChange, onSubmit, initialTicker }) {
             value={ticker}
             onChange={handleInputChange}
             placeholder="e.g., AAPL, MSFT, GOOGL"
-            maxLength="5"
             required
           />
         </div>
