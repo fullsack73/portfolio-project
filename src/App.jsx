@@ -3,6 +3,9 @@ import StockChart from "./StockChart.jsx";
 import DateInput from "./DateInput.jsx";
 import TickerInput from "./TickerInput.jsx";
 import RegressionChart from "./RegressionChart.jsx";
+import Selector from './Selector.jsx';
+import HedgeAnalysis from './Hedge.jsx';
+import './App.css';
 
 function App() {
   const [data, setData] = useState(null);
@@ -13,6 +16,8 @@ function App() {
   const [showChart, setShowChart] = useState(false);
   const [regressionData, setRegressionData] = useState(null);
   const [formula, setFormula] = useState('');
+  const [activeView, setActiveView] = useState('stock');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fetchData = (startDate = null, endDate = null, stockTicker = ticker) => {
     setLoading(true);
@@ -78,34 +83,48 @@ function App() {
   };
 
   return (
-    <div>
-      <h1>Stock Data Visualization</h1>
-      <div className="controls-container">
-        <TickerInput onTickerChange={handleTickerChange} onSubmit={handleSubmit} initialTicker="AAPL" />
-        <DateInput onDateRangeChange={handleDateRangeChange} />
-      </div>
-
-      {loading && <p className="loading">Loading...</p>}
-      {error && <p className="error">Error: {error}</p>}
-
-      {showChart && data && (
-        <>
-          <h2>{companyName} ({ticker})</h2>
-          <div className="charts-container">
-            <div className="chart-wrapper">
-              <StockChart data={data} ticker={ticker} />
+    <div className="app-container">
+      <Selector 
+        activeView={activeView} 
+        onViewChange={setActiveView} 
+        isOpen={isSidebarOpen}
+        onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
+      <main className="main-content">
+        {activeView === 'stock' ? (
+          <>
+            <h1>Stock Data Visualization</h1>
+            <div className="controls-container">
+              <TickerInput onTickerChange={handleTickerChange} onSubmit={handleSubmit} initialTicker="AAPL" />
+              <DateInput onDateRangeChange={handleDateRangeChange} />
             </div>
-            <div className="chart-wrapper">
-              <RegressionChart 
-                data={data} 
-                regression={regressionData} 
-                ticker={ticker}
-                formula={formula}
-              />
-            </div>
-          </div>
-        </>
-      )}
+
+            {loading && <p className="loading">Loading...</p>}
+            {error && <p className="error">Error: {error}</p>}
+
+            {showChart && data && (
+              <>
+                <h2>{companyName} ({ticker})</h2>
+                <div className="charts-container">
+                  <div className="chart-wrapper">
+                    <StockChart data={data} ticker={ticker} />
+                  </div>
+                  <div className="chart-wrapper">
+                    <RegressionChart 
+                      data={data} 
+                      regression={regressionData} 
+                      ticker={ticker}
+                      formula={formula}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          <HedgeAnalysis />
+        )}
+      </main>
     </div>
   );
 }
