@@ -1,6 +1,7 @@
 import React from 'react';
 import Plot from 'react-plotly.js';
 
+// linear regression for non-linear data. retarded, i know.
 function RegressionChart({ data, regression, ticker, formula }) {
   return (
     <Plot

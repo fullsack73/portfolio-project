@@ -5,14 +5,14 @@ function DateInput({ onDateRangeChange }) {
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    // Set default dates (3 months from yesterday)
+    // set default dates (3 months from yesterday)
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
     const threeMonthsAgo = new Date(yesterday);
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    // Format dates for input fields (YYYY-MM-DD)
+    // format dates for input fields (YYYY-MM-DD)
     const formatDate = (date) => {
       return date.toISOString().split('T')[0];
     };

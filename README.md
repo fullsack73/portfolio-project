@@ -1,33 +1,30 @@
-# Stock Data Visualization and Regression Analysis Program
+# Portfolio Stuff Program
 
 ## Overview
-This program fetches historical stock market data, visualizes it, and performs regression analysis to identify trends and make predictions. It's designed for investors, analysts, and anyone interested in quantitative financial analysis.
+this program shows stock data, regresion line, hedge info, and provides optimized portfolio
+
+## ⚠️ **Disclaimer**
+**This program is only meant for academic purposes and should not be taken as a serious financial analysis.**  
+**Use the result you get from the program AT YOUR OWN RISK.**
 
 ## Features
 
-### 1. Stock Data Retrieval
-- Fetches historical stock prices from financial APIs (Yahoo Finance, Alpha Vantage, etc.)
-- Supports multiple stocks and custom date ranges
-- Handles dividend adjustments and stock splits
+### 1. Stock Data Visualization
+- shows financial timeline for given ticker
 
-### 2. Data Visualization
-- Interactive candlestick charts showing Open-High-Low-Close (OHLC) data
-- Volume indicators
-- Moving averages (SMA, EMA) with customizable periods
-- Bollinger Bands and other technical indicators
+### 2. Linear Regression
+- shows regression data
+- nothing but accurate depiction of price trend, since it's conducting linear regression with non-linear data. but i couldn't think of any better way.(might change later)
 
-### 3. Regression Analysis
-- Linear regression models to identify trends
-- Polynomial regression for non-linear relationships
-- Time series forecasting with ARIMA models
-- R-squared values and other statistical metrics to evaluate model fit
+### 3. Hedge Relation Analysis
+- it tells you the 2 stocks you provided are in hedge or not
 
-## How It Works
+### 4. Portfolio Optimization
+- tells you how to split your money (because apparently, you need help with that)
+- uses basic math to find the "optimal" portfolio weights (spoiler: past performance doesn't guarantee future results, but we pretend it does)
+- shows you the efficient frontier (it's like a buffet line for investments, but with less food and more risk) 
+- shout out to Harry Markowitz, an absolute legend
 
-### Data Flow
-1. **Input**: User selects stock symbol(s) and date range
-2. **Data Fetching**: Program retrieves historical data from API
-3. **Preprocessing**: Cleans and formats data (handling missing values, adjusting for splits)
-4. **Analysis**: Performs selected regression models
-5. **Visualization**: Generates interactive charts
-6. **Output**: Displays results with statistical insights
+### 5. Acknowledgements
+- thanks to yfinance for letting me steal their data (legally, of course)
+- pandas and numpy for doing all the heavy lifting while I just write pretty code

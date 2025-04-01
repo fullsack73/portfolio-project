@@ -1,10 +1,10 @@
-/* Layout Styles */
+/* layout styles */
 .app-container {
     display: flex;
     min-height: 100vh;
 }
 
-/* Menu Toggle Button */
+/* menu toggle button */
 .menu-toggle {
     position: fixed;
     top: 1rem;
@@ -40,7 +40,7 @@
     line-height: 1;
 }
 
-/* Sidebar Styles */
+/* sidebar styles */
 .sidebar {
     width: 250px;
     background-color: #2c3e50;
@@ -124,7 +124,7 @@
     font-size: 1.2rem;
 }
 
-/* Main Content Styles */
+/* main content styles */
 .main-content {
     flex: 1;
     padding: 2rem;
@@ -132,7 +132,7 @@
     transition: margin-left 0.3s ease;
 }
 
-/* Hedge Analysis Styles */
+/* hedge analysis styles */
 .hedge-analysis {
     max-width: 800px;
     margin: 0 auto;
@@ -232,7 +232,7 @@
     font-weight: 600;
 }
 
-/* Portfolio Analysis Styles */
+/* portfolio analysis styles */
 .portfolio-analysis {
     max-width: 1000px;
     margin: 0 auto;

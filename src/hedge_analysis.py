@@ -4,7 +4,7 @@ from scipy import stats
 
 def analyze_hedge_relationship(ticker1, ticker2, start_date=None, end_date=None):
     try:
-        # Use provided dates or default to 3 months from yesterday
+        # use provided dates or default to 3 months from yesterday
         if start_date and end_date:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
@@ -14,7 +14,7 @@ def analyze_hedge_relationship(ticker1, ticker2, start_date=None, end_date=None)
         
         print(f"Analyzing hedge relationship between {ticker1} and {ticker2}")
         
-        # Fetch data for both tickers
+        # fetch data for both tickers
         stock1 = yf.Ticker(ticker1)
         stock2 = yf.Ticker(ticker2)
         
@@ -26,36 +26,36 @@ def analyze_hedge_relationship(ticker1, ticker2, start_date=None, end_date=None)
         if df1.empty or df2.empty:
             return {
                 'error': 'No data available for one or both tickers',
-                'is_hedge': 0,  # Changed from False to 0
+                'is_hedge': 0,  # changed from False to 0
                 'correlation': 0,
                 'p_value': 0,
                 'strength': 'None'
             }
         
-        # Calculate daily returns
+        # calculate daily returns
         returns1 = df1['Close'].pct_change().dropna()
         returns2 = df2['Close'].pct_change().dropna()
         
-        # Ensure both series have the same dates
+        # ensure both series have the same dates
         common_dates = returns1.index.intersection(returns2.index)
         returns1 = returns1[common_dates]
         returns2 = returns2[common_dates]
         
-        # Calculate correlation and p-value
+        # calculate correlation and p-value
         correlation, p_value = stats.pearsonr(returns1, returns2)
         
-        # Determine hedge relationship
-        is_hedge = correlation < -0.5  # Strong negative correlation
+        # determine hedge relationship
+        is_hedge = correlation < -0.5  # strong negative correlation
         strength = 'Strong' if abs(correlation) > 0.7 else 'Moderate' if abs(correlation) > 0.5 else 'Weak'
         
-        # Get company names
+        # get company names
         info1 = stock1.info
         info2 = stock2.info
         company1 = info1.get('longName', ticker1)
         company2 = info2.get('longName', ticker2)
         
         return {
-            'is_hedge': 1 if is_hedge else 0,  # Convert boolean to integer
+            'is_hedge': 1 if is_hedge else 0,  # convert boolean to integer
             'correlation': float(correlation),
             'p_value': float(p_value),
             'strength': strength,
@@ -73,7 +73,7 @@ def analyze_hedge_relationship(ticker1, ticker2, start_date=None, end_date=None)
         print(f"Error analyzing hedge relationship: {str(e)}")
         return {
             'error': str(e),
-            'is_hedge': 0,  # Changed from False to 0
+            'is_hedge': 0,  # changed from False to 0
             'correlation': 0,
             'p_value': 0,
             'strength': 'None'

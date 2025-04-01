@@ -9,6 +9,8 @@ from hedge_analysis import analyze_hedge_relationship
 from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
 
 app = Flask(__name__)
+
+# don't touch the settings in CORS(). JUST DON'T. it took me fucking ages to figure that out.
 CORS(app, 
      resources={
          r"/*": {
@@ -24,7 +26,7 @@ CORS(app,
 # maybe go with sliding window approach, but for now this is good
 def generate_regression_data(ticker="", start_date=None, end_date=None):
     try:
-        # Use provided dates or default to 3 months from yesterday
+        # default to 3 months to 'yesterday'. otherwise yfinance might start to fuck up
         if start_date and end_date:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
@@ -34,7 +36,7 @@ def generate_regression_data(ticker="", start_date=None, end_date=None):
         
         print(f"Fetching {ticker} data from {start_date} to {end_date}")
         
-        # Fetch stock data
+        # fetch stock data
         stock = yf.Ticker(ticker)
         df = stock.history(start=start_date.strftime('%Y-%m-%d'), 
                           end=end_date.strftime('%Y-%m-%d'))
@@ -43,40 +45,40 @@ def generate_regression_data(ticker="", start_date=None, end_date=None):
             print(f"No data received from yfinance for {ticker}")
             return {}
             
-        # Prepare data for regression
-        X = np.arange(len(df)).reshape(-1, 1)  # Days as features
-        y = df['Close'].values  # Closing prices as target
+        # prepare data for regression
+        X = np.arange(len(df)).reshape(-1, 1)  # days as features
+        y = df['Close'].values  # closing prices as target
         
-        # Scale the features
+        # scale the features
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         
-        # Fit linear regression
+        # fit linear regression. built in linear regression is slow as fuck. but i've got no other options.
         model = LinearRegression()
         model.fit(X_scaled, y)
         
-        # Generate regression line
+        # generate regression line
         y_pred = model.predict(X_scaled)
         
-        # Convert to date:value format for both original and regression data
+        # convert to date:value format for both original and regression data
         dates = df.index.strftime('%Y-%m-%d').tolist()
         original_data = {date: float(price) for date, price in zip(dates, y)}
         regression_data = {date: float(price) for date, price in zip(dates, y_pred)}
         
-        # Get stock info
+        # get stock info
         info = stock.info
         company_name = info.get('longName', ticker)
         
-        # Calculate the actual formula coefficients (unscaled)
+        # calculate the actual formula coefficients (unscaled)
         n_days = len(df)
         mean_days = (n_days - 1) / 2
         std_days = np.sqrt((n_days - 1) * (n_days + 1) / 12)
         
-        # Convert scaled coefficients to unscaled
+        # convert scaled coefficients to unscaled
         actual_slope = model.coef_[0] / std_days
         actual_intercept = model.intercept_ - (model.coef_[0] * mean_days / std_days)
         
-        # Format the formula
+        # format the formula
         formula = f"price = {actual_slope:.4f} * days + {actual_intercept:.2f}"
         
         return {
@@ -101,7 +103,7 @@ def generate_regression_data(ticker="", start_date=None, end_date=None):
 
 def generate_data(ticker="", start_date=None, end_date=None):
     try:
-        # Use provided dates or default to 3 months from yesterday
+        # use provided dates or default to 3 months from yesterday
         if start_date and end_date:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
@@ -111,7 +113,7 @@ def generate_data(ticker="", start_date=None, end_date=None):
         
         print(f"Fetching {ticker} data from {start_date} to {end_date}")
         
-        # Fetch stock data
+        # fetch stock data
         stock = yf.Ticker(ticker)
         df = stock.history(start=start_date.strftime('%Y-%m-%d'), 
                           end=end_date.strftime('%Y-%m-%d'))
@@ -124,11 +126,11 @@ def generate_data(ticker="", start_date=None, end_date=None):
         print(f"DataFrame columns: {df.columns}")
         print(f"First few rows:\n{df.head()}")
         
-        # Get stock info
+        # get stock info
         info = stock.info
         company_name = info.get('longName', ticker)
         
-        # Convert to date:value format
+        # convert to date:value format
         data = {date.strftime('%Y-%m-%d'): float(price) for date, price in zip(df.index, df['Close'])}
         print(f"Generated data dictionary with {len(data)} entries")
         
@@ -158,7 +160,7 @@ def get_data():
 
     return jsonify(data)
 
-# Add new endpoint for hedge analysis
+# add new endpoint for hedge analysis
 @app.route('/analyze-hedge', methods=['GET', 'OPTIONS'])
 def analyze_hedge():
     ticker1 = request.args.get('ticker1')
@@ -172,9 +174,10 @@ def analyze_hedge():
     result = analyze_hedge_relationship(ticker1, ticker2, start_date, end_date)
     return jsonify(result)
 
+# endpoint for portfolio metrics. keeping files seperated. it's fucking spagetti code otherwise.
 @app.route('/portfolio-metrics', methods=['GET', 'OPTIONS'])
 def get_portfolio_metrics():
-    # Get parameters from request
+    # get parameters from request
     tickers = request.args.get('tickers', '').split(',')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
@@ -183,7 +186,7 @@ def get_portfolio_metrics():
         return jsonify({'error': 'At least one ticker is required'}), 400
 
     try:
-        # Calculate portfolio metrics with the provided tickers and date range
+        # calculate portfolio metrics.
         final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(tickers, start_date, end_date)
         portfolio_data = prepare_portfolio_data(opts, optv, rets)
         

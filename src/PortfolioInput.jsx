@@ -11,8 +11,9 @@ const PortfolioInput = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const handleTickersChange = (event) => {
-        setTickers(event.target.value);
+    const handleTickersChange = (e) => {
+        // convert to uppercase for lazy asses
+        setTickers(e.target.value.toUpperCase());
     };
 
     const handleStartDateChange = (event) => {
@@ -29,7 +30,7 @@ const PortfolioInput = () => {
         setError(null);
 
         try {
-            // Clean up tickers string by removing spaces and extra commas
+            // clean up tickers string by removing spaces and extra commas
             const cleanTickers = tickers.replace(/\s+/g, '').replace(/,+/g, ',');
             
             const response = await axios.get('http://127.0.0.1:5000/portfolio-metrics', {
