@@ -5,6 +5,7 @@ import TickerInput from "./TickerInput.jsx";
 import RegressionChart from "./RegressionChart.jsx";
 import Selector from './Selector.jsx';
 import HedgeAnalysis from './Hedge.jsx';
+import PortfolioInput from './PortfolioInput.jsx';
 import './App.css';
 
 function App() {
@@ -121,8 +122,10 @@ function App() {
               </>
             )}
           </>
-        ) : (
+        ) : activeView === 'hedge' ? (
           <HedgeAnalysis />
+        ) : (
+          <PortfolioInput />
         )}
       </main>
     </div>
