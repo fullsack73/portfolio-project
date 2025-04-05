@@ -20,7 +20,7 @@ const HedgeAnalysis = () => {
         setError(null);
 
         try {
-            const url = new URL('http://127.0.0.1:5000/analyze-hedge');
+            const url = new URL('/api/analyze-hedge');
             url.searchParams.append('ticker1', ticker1.toUpperCase());
             url.searchParams.append('ticker2', ticker2.toUpperCase());
             if (startDate) url.searchParams.append('start_date', startDate);
