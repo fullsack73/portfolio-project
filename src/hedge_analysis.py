@@ -11,11 +11,6 @@ def validate_date_range(start_date, end_date):
         if start_date >= end_date:
             raise ValueError("Start date must be before end date")
             
-        # Check if dates are not too far in the past
-        max_days_back = 365 * 10  # 10 years max
-        if (datetime.now() - start_date).days > max_days_back:
-            raise ValueError(f"Start date cannot be more than {max_days_back/365:.0f} years in the past")
-            
         # Check if dates are not in the future
         if end_date > datetime.now():
             raise ValueError("End date cannot be in the future")
