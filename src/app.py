@@ -23,13 +23,36 @@ CORS(app,
          }
      })
 
+def validate_date_range(start_date, end_date):
+    try:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Check if dates are valid
+        if start_date >= end_date:
+            raise ValueError("Start date must be before end date")
+            
+        # Check if dates are not too far in the past
+        max_days_back = 365 * 10  # 10 years max
+        if (datetime.now() - start_date).days > max_days_back:
+            raise ValueError(f"Start date cannot be more than {max_days_back/365:.0f} years in the past")
+            
+        # Check if dates are not in the future
+        if end_date > datetime.now():
+            raise ValueError("End date cannot be in the future")
+            
+        return start_date, end_date
+    except ValueError as e:
+        raise ValueError(f"Invalid date range: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Invalid date format. Please use YYYY-MM-DD format")
+
 # maybe go with sliding window approach, but for now this is good
 def generate_regression_data(ticker="", start_date=None, end_date=None):
     try:
         # default to 3 months to 'yesterday'. otherwise yfinance might start to fuck up
         if start_date and end_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            start_date, end_date = validate_date_range(start_date, end_date)
         else:
             end_date = datetime.now() - timedelta(days=1)
             start_date = end_date - timedelta(days=90)
@@ -103,10 +126,9 @@ def generate_regression_data(ticker="", start_date=None, end_date=None):
 
 def generate_data(ticker="", start_date=None, end_date=None):
     try:
-        # use provided dates or default to 3 months from yesterday
+        # use provided dates or default to 3 months from 'yesterday'
         if start_date and end_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            start_date, end_date = validate_date_range(start_date, end_date)
         else:
             end_date = datetime.now() - timedelta(days=1)
             start_date = end_date - timedelta(days=90)
