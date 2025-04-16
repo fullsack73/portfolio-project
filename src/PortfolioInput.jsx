@@ -33,7 +33,7 @@ const PortfolioInput = () => {
             // clean up tickers string by removing spaces and extra commas
             const cleanTickers = tickers.replace(/\s+/g, '').replace(/,+/g, ',');
             
-            const response = await axios.get('http://127.0.0.1:5000/portfolio-metrics', {
+            const response = await axios.get('/api/portfolio-metrics', {
                 params: {
                     tickers: cleanTickers,
                     start_date: startDate,

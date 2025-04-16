@@ -10,11 +10,11 @@ from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
 
 app = Flask(__name__)
 
-# don't touch the settings in CORS(). JUST DON'T. it took me fucking ages to figure that out.
+# don't touch the settings in CORS(). JUST DON'T. it took me fucking ages to get it working
 CORS(app, 
      resources={
          r"/*": {
-             "origins": ["http://localhost:5173", "http://127.0.0.1:5173"],
+             "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "https://gannet-included-jolly.ngrok-free.app"],
              "methods": ["GET", "POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization", "Accept"],
              "supports_credentials": True,
@@ -23,13 +23,31 @@ CORS(app,
          }
      })
 
+def validate_date_range(start_date, end_date):
+    try:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Check if dates are valid
+        if start_date >= end_date:
+            raise ValueError("Start date must be before end date")
+            
+        # Check if dates are not in the future
+        if end_date > datetime.now():
+            raise ValueError("End date cannot be in the future")
+            
+        return start_date, end_date
+    except ValueError as e:
+        raise ValueError(f"Invalid date range: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Invalid date format. Please use YYYY-MM-DD format")
+
 # maybe go with sliding window approach, but for now this is good
 def generate_regression_data(ticker="", start_date=None, end_date=None):
     try:
         # default to 3 months to 'yesterday'. otherwise yfinance might start to fuck up
         if start_date and end_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            start_date, end_date = validate_date_range(start_date, end_date)
         else:
             end_date = datetime.now() - timedelta(days=1)
             start_date = end_date - timedelta(days=90)
@@ -103,10 +121,9 @@ def generate_regression_data(ticker="", start_date=None, end_date=None):
 
 def generate_data(ticker="", start_date=None, end_date=None):
     try:
-        # use provided dates or default to 3 months from yesterday
+        # use provided dates or default to 3 months from 'yesterday'
         if start_date and end_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d')
-            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+            start_date, end_date = validate_date_range(start_date, end_date)
         else:
             end_date = datetime.now() - timedelta(days=1)
             start_date = end_date - timedelta(days=90)
@@ -161,7 +178,7 @@ def get_data():
     return jsonify(data)
 
 # add new endpoint for hedge analysis
-@app.route('/analyze-hedge', methods=['GET', 'OPTIONS'])
+@app.route('/api/analyze-hedge', methods=['GET', 'OPTIONS'])
 def analyze_hedge():
     ticker1 = request.args.get('ticker1')
     ticker2 = request.args.get('ticker2')

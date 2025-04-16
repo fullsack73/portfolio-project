@@ -14,6 +14,25 @@ def port_vol(weights, rets):
 def min_func_sharpe(weights, rets):
     return -port_ret(weights, rets) / port_vol(weights, rets)
 
+def validate_date_range(start_date, end_date):
+    try:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        # Check if dates are valid
+        if start_date >= end_date:
+            raise ValueError("Start date must be before end date")
+            
+        # Check if dates are not in the future
+        if end_date > datetime.now():
+            raise ValueError("End date cannot be in the future")
+            
+        return start_date, end_date
+    except ValueError as e:
+        raise ValueError(f"Invalid date range: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Invalid date format. Please use YYYY-MM-DD format")
+
 def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None):
     # default tickers. to prevent the function from crashing. btw, why the fuck would anyone want to use this function without tickers??
     if tickers is None:
@@ -25,6 +44,8 @@ def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None):
     if start_date is None or end_date is None:
         end_date = datetime.now().strftime('%Y-%m-%d')
         start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+    else:
+        start_date, end_date = validate_date_range(start_date, end_date)
     
     # fetch data using yfinance
     data = yf.download(tickers, start=start_date, end=end_date)
