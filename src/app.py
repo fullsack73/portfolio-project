@@ -178,7 +178,7 @@ def get_data():
     return jsonify(data)
 
 # add new endpoint for hedge analysis
-@app.route('/analyze-hedge', methods=['GET', 'OPTIONS'])
+@app.route('/api/analyze-hedge', methods=['GET', 'OPTIONS'])
 def analyze_hedge():
     ticker1 = request.args.get('ticker1')
     ticker2 = request.args.get('ticker2')
