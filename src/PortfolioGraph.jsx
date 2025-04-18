@@ -28,6 +28,14 @@ const PortfolioGraph = ({ data }) => {
                     type: 'scatter',
                     marker: { color: 'red', size: 12 },
                     name: 'Minimum Volatility'
+                },
+                {
+                    x: data.tvols,
+                    y: data.trets,
+                    mode: 'lines',
+                    type: 'scatter',
+                    line: { color: 'red', width: 2 },
+                    name: 'Efficient Frontier'
                 }
             ]}
             layout={{

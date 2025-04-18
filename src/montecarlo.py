@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 def port_ret(weights, rets):
     return np.sum(rets.mean() * weights) * 252
 
-# i won't even begin to claim that i know what the fuck is going on here.
 def port_vol(weights, rets):
     return np.sqrt(np.dot(weights.T, np.dot(rets.cov() * 252, weights)))
 
@@ -96,19 +95,28 @@ def prepare_portfolio_data(opts, optv, rets):
     pvols = np.array(pvols)
     
     # generate efficient frontier
-    trets = np.linspace(0.05, 0.2, 50)
+    trets = np.linspace(min(prets.min(), 0), prets.max(), 50)
     tvols = []
+    prev_weights = np.ones(noa) / noa  # start with equal weights
 
     for tret in trets:
         cons = ({'type': 'eq', 'fun': lambda x: port_ret(x, rets) - tret}, 
                 {'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-        res = sco.minimize(port_vol, np.random.random(noa), args=(rets,), 
+        res = sco.minimize(port_vol, prev_weights, args=(rets,), 
                          method='SLSQP', 
                          bounds=tuple((0, 1) for _ in range(noa)), 
                          constraints=cons)
-        tvols.append(res['fun'])
+        if res.success:
+            tvols.append(res.fun)
+            prev_weights = res.x # warm start
+        else:
+            tvols.append(np.nan)
 
     tvols = np.array(tvols)
+    # filter out nan values
+    mask = ~np.isnan(tvols)
+    tvols = tvols[mask]
+    trets = trets[mask]
 
     # return the data instead of plotting
     return {
