@@ -10,8 +10,11 @@ def port_ret(weights, rets):
 def port_vol(weights, rets):
     return np.sqrt(np.dot(weights.T, np.dot(rets.cov() * 252, weights)))
 
-def min_func_sharpe(weights, rets):
-    return -port_ret(weights, rets) / port_vol(weights, rets)
+def min_func_sharpe(weights, rets, riskless_rate=0.0):
+    # Negative Sharpe ratio (for minimization)
+    port_return = port_ret(weights, rets)
+    port_volatility = port_vol(weights, rets)
+    return -((port_return - riskless_rate) / port_volatility)
 
 def validate_date_range(start_date, end_date):
     try:
@@ -32,7 +35,7 @@ def validate_date_range(start_date, end_date):
     except Exception as e:
         raise ValueError(f"Invalid date format. Please use YYYY-MM-DD format")
 
-def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None):
+def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None, riskless_rate=0.0):
     # default tickers. to prevent the function from crashing. btw, why the fuck would anyone want to use this function without tickers??
     if tickers is None:
         tickers = ['SPY', 'GLD', 'AAPL', 'MSFT']
@@ -68,18 +71,18 @@ def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None):
     cons = ({'type': 'eq', 'fun': lambda x: 1 - np.sum(x)})
     bounds = tuple((0, 1) for _ in range(noa))
     
-    # optimization
-    opts = sco.minimize(min_func_sharpe, weights, args=(rets,), method='SLSQP', bounds=bounds, constraints=cons)
+    # optimization for tangency portfolio (max Sharpe)
+    opts = sco.minimize(min_func_sharpe, weights, args=(rets, riskless_rate), method='SLSQP', bounds=bounds, constraints=cons)
     optv = sco.minimize(port_vol, weights, args=(rets,), method='SLSQP', bounds=bounds, constraints=cons)
     
     final_weights = opts['x'].round(3)
     final_ret = port_ret(final_weights, rets)
     final_vol = port_vol(final_weights, rets)
-    final_sharpe = final_ret / final_vol
+    final_sharpe = (final_ret - riskless_rate) / final_vol
     
     return final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets
 
-def prepare_portfolio_data(opts, optv, rets):
+def prepare_portfolio_data(opts, optv, rets, riskless_rate=0.0):
     # generate random portfolios for visualization
     noa = len(rets.columns)
     prets = []
@@ -118,21 +121,36 @@ def prepare_portfolio_data(opts, optv, rets):
     tvols = tvols[mask]
     trets = trets[mask]
 
-    # return the data instead of plotting
+    # Tangency portfolio
+    tangency_vol = port_vol(opts['x'], rets)
+    tangency_ret = port_ret(opts['x'], rets)
+
+    # Riskless asset point
+    riskless_point = {'vol': 0.0, 'ret': riskless_rate}
+
+    # Capital Market Line (CML): line from riskless asset through tangency portfolio
+    # We'll plot from (0, riskless_rate) to a volatility a bit beyond the tangency portfolio
+    cml_vols = np.linspace(0, max(tvols.max(), tangency_vol) * 1.2, 100)
+    cml_slope = (tangency_ret - riskless_rate) / tangency_vol if tangency_vol > 0 else 0
+    cml_rets = riskless_rate + cml_slope * cml_vols
+
     return {
         'pvols': pvols.tolist(),
         'prets': prets.tolist(),
         'tvols': tvols.tolist(),
         'trets': trets.tolist(),
-        'opt_vol': port_vol(opts['x'], rets),
-        'opt_ret': port_ret(opts['x'], rets),
+        'opt_vol': tangency_vol,
+        'opt_ret': tangency_ret,
         'optv_vol': port_vol(optv['x'], rets),
-        'optv_ret': port_ret(optv['x'], rets)
+        'optv_ret': port_ret(optv['x'], rets),
+        'riskless_point': riskless_point,
+        'cml_vols': cml_vols.tolist(),
+        'cml_rets': cml_rets.tolist()
     }
 
 # call the functions
-final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics()
-portfolio_data = prepare_portfolio_data(opts, optv, rets)
+final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(riskless_rate=0.02)
+portfolio_data = prepare_portfolio_data(opts, optv, rets, riskless_rate=0.02)
 print("Final weights: ", final_weights)
 print("Final return: ", final_ret)
 print("Final volatility: ", final_vol)

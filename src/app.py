@@ -198,14 +198,15 @@ def get_portfolio_metrics():
     tickers = request.args.get('tickers', '').split(',')
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    riskless_rate = request.args.get('riskless_rate', default=0.0, type=float)
 
     if not tickers or tickers[0] == '':
         return jsonify({'error': 'At least one ticker is required'}), 400
 
     try:
         # calculate portfolio metrics.
-        final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(tickers, start_date, end_date)
-        portfolio_data = prepare_portfolio_data(opts, optv, rets)
+        final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(tickers, start_date, end_date, riskless_rate)
+        portfolio_data = prepare_portfolio_data(opts, optv, rets, riskless_rate)
         
         data = {
             'final_weights': final_weights.tolist(),

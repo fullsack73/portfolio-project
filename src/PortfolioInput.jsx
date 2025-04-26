@@ -7,6 +7,7 @@ const PortfolioInput = () => {
     const [tickers, setTickers] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [risklessRate, setRisklessRate] = useState('');
     const [metrics, setMetrics] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -24,6 +25,10 @@ const PortfolioInput = () => {
         setEndDate(event.target.value);
     };
 
+    const handleRisklessRateChange = (event) => {
+        setRisklessRate(event.target.value);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setLoading(true);
@@ -37,7 +42,8 @@ const PortfolioInput = () => {
                 params: {
                     tickers: cleanTickers,
                     start_date: startDate,
-                    end_date: endDate
+                    end_date: endDate,
+                    riskless_rate: parseFloat(risklessRate) / 100
                 }
             });
             setMetrics(response.data);
@@ -68,6 +74,22 @@ const PortfolioInput = () => {
                         value={tickers}
                         onChange={handleTickersChange}
                         placeholder="Enter stock tickers"
+                        required
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="risklessRate">
+                        Riskless Asset Return Rate (%)
+                    </label>
+                    <input
+                        type="number"
+                        id="risklessRate"
+                        value={risklessRate}
+                        onChange={handleRisklessRateChange}
+                        placeholder="e.g., 2.5"
+                        step="any"
+                        min="0"
                         required
                     />
                 </div>
