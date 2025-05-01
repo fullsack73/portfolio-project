@@ -4,7 +4,30 @@
     "hedge": "Hedge Analysis",
     "portfolio": "Portfolio Analysis"
   },
+  "date": {
+    "start": "Start Date",
+    "end": "End Date"
+  },
+  "regression": {
+    "title": "Stock Data Visualization",
+    "updateChart": "Update Chart",
+    "data": "Stock Data"
+  },
+  "hedge": {
+    "title": "Hedge Relationship Analysis",
+    "label1": "First Ticker",
+    "label2": "Second Ticker",
+    "companies": "Companies",
+    "relationship": "Relationship",
+    "statisticalAnalysis": "Statistical Analysis",
+    "analysisPeriod": "Analysis Period",
+    "correlation": "Correlation",
+    "pValue": "P-value",
+    "strength": "Strength"
+  },
   "common": {
+    "loading": "Loading...",
+    "error": "Error",
     "search": "Search",
     "submit": "Submit",
     "close": "Close",
@@ -24,7 +47,12 @@
     "optimization": {
       "title": "Portfolio Optimization",
       "description": "Enter your stock tickers and date range to find the optimal portfolio weights that maximize the Sharpe ratio (risk-adjusted return)."
-    }
+    },
+    "results": "Portfolio Results",
+    "weights": "Optimal Weights",
+    "expectedReturn": "Expected Return",
+    "portfolioRisk": "Portfolio Risk",
+    "sharpeRatio": "Sharpe Ratio"
   },
   "ticker": {
     "label": "Enter Stock Symbol",

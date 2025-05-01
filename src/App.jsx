@@ -23,6 +23,7 @@ function AppContent() {
   const [activeView, setActiveView] = useState('stock');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const { t } = useTranslation();
 
   const fetchData = (startDate = null, endDate = null, stockTicker = ticker) => {
     setLoading(true);
@@ -104,14 +105,14 @@ function AppContent() {
       <main className="main-content">
         {activeView === 'stock' ? (
           <>
-            <h1>Stock Data Visualization</h1>
+            <h1>{t('regression.title')}</h1>
             <div className="controls-container">
               <TickerInput onTickerChange={handleTickerChange} onSubmit={handleSubmit} initialTicker="AAPL" />
               <DateInput onDateRangeChange={handleDateRangeChange} />
             </div>
 
-            {loading && <p className="loading">Loading...</p>}
-            {error && <p className="error">Error: {error}</p>}
+            {loading && <p className="loading">{t('common.loading')}</p>}
+            {error && <p className="error">{t('common.error')}: {error}</p>}
 
             {showChart && data && (
               <>

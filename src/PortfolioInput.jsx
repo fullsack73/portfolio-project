@@ -67,8 +67,8 @@ const PortfolioInput = () => {
             <form onSubmit={handleSubmit} className="portfolio-form">
                 <div className="form-group">
                     <label htmlFor="tickers">
-                        {t('portfolio.optimization.tickers.label')}
-                        <span className="hint">{t('portfolio.optimization.tickers.hint')}</span>
+                        {t('portfolio.optimization.title')}
+                        <span className="hint">{t('portfolio.optimization.description')}</span>
                     </label>
                     <input
                         type="text"
@@ -82,7 +82,7 @@ const PortfolioInput = () => {
 
                 <div className="form-group">
                     <label htmlFor="risklessRate">
-                        Riskless Asset Return Rate (%)
+                        {t('portfolio.risklessRate')} (%)
                     </label>
                     <input
                         type="number"
@@ -98,7 +98,7 @@ const PortfolioInput = () => {
 
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="startDate">Start Date</label>
+                        <label htmlFor="startDate">{t('date.start')}</label>
                         <input
                             type="date"
                             id="startDate"
@@ -109,7 +109,7 @@ const PortfolioInput = () => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="endDate">End Date</label>
+                        <label htmlFor="endDate">{t('date.end')}</label>
                         <input
                             type="date"
                             id="endDate"
@@ -121,7 +121,7 @@ const PortfolioInput = () => {
                 </div>
 
                 <button type="submit" disabled={loading} className="submit-button">
-                    {loading ? 'Optimizing Portfolio...' : 'Find Optimal Portfolio'}
+                    {loading ? t('common.loading') : t('common.submit')}
                 </button>
             </form>
 
@@ -129,24 +129,24 @@ const PortfolioInput = () => {
 
             {metrics && (
                 <div className="metrics-container">
-                    <h3>Optimal Portfolio Results</h3>
+                    <h3>{t('portfolio.results')}</h3>
                     <div className="metrics-grid">
                         <div className="metric-card">
-                            <h4>Optimal Weights</h4>
+                            <h4>{t('portfolio.weights')}</h4>
                             <p>{metrics.final_weights.map((w, i) => `${(w * 100).toFixed(1)}%`).join(', ')}</p>
                         </div>
                         <div className="metric-card">
-                            <h4>Expected Return</h4>
+                            <h4>{t('portfolio.expectedReturn')}</h4>
                             <p className={metrics.final_return >= 0 ? 'positive' : 'negative'}>
                                 {(metrics.final_return * 100).toFixed(2)}%
                             </p>
                         </div>
                         <div className="metric-card">
-                            <h4>Portfolio Risk</h4>
+                            <h4>{t('portfolio.portfolioRisk')}</h4>
                             <p>{(metrics.final_volatility * 100).toFixed(2)}%</p>
                         </div>
                         <div className="metric-card">
-                            <h4>Sharpe Ratio</h4>
+                            <h4>{t('portfolio.sharpeRatio')}</h4>
                             <p>{metrics.final_sharpe_ratio.toFixed(2)}</p>
                         </div>
                     </div>
