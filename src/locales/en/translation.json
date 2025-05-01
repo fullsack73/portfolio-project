@@ -1,0 +1,34 @@
+{
+  "navigation": {
+    "stock": "Stock Data",
+    "hedge": "Hedge Analysis",
+    "portfolio": "Portfolio Analysis"
+  },
+  "common": {
+    "search": "Search",
+    "submit": "Submit",
+    "close": "Close",
+    "menu": "Menu"
+  },
+  "stock": {
+    "title": "Stock Analysis",
+    "ticker": "Ticker Symbol",
+    "dateRange": "Date Range",
+    "start": "Start Date",
+    "end": "End Date"
+  },
+  "portfolio": {
+    "title": "Portfolio Analysis",
+    "tickers": "Tickers",
+    "risklessRate": "Riskless Rate",
+    "optimization": {
+      "title": "Portfolio Optimization",
+      "description": "Enter your stock tickers and date range to find the optimal portfolio weights that maximize the Sharpe ratio (risk-adjusted return)."
+    }
+  },
+  "ticker": {
+    "label": "Enter Stock Symbol",
+    "placeholder": "e.g., AAPL, MSFT, GOOGL",
+    "submit": "Show Stock Data"
+  }
+}

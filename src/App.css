@@ -24,7 +24,48 @@
     transition: all 0.3s ease;
 }
 
-.menu-toggle.hidden {
+/* language toggle button */
+.language-toggle {
+    position: fixed;
+    top: 5rem;
+    left: 1rem;
+    z-index: 1000;
+    background: #2c3e50;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Hide language button when sidebar is open */
+.sidebar.open + .language-toggle {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-100%);
+}
+
+.language-toggle:hover {
+    background: #34495e;
+    transform: scale(1.05);
+}
+
+.language-toggle.hidden {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-100%);
+}
+
+.menu-toggle.hidden,
+.language-toggle.hidden {
     opacity: 0;
     visibility: hidden;
     transform: translateX(-100%);

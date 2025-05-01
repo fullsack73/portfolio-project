@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { I18nextProvider, useTranslation } from 'react-i18next';
+import i18n from './i18n';
 import StockChart from "./StockChart.jsx";
 import DateInput from "./DateInput.jsx";
 import TickerInput from "./TickerInput.jsx";
@@ -6,9 +8,10 @@ import RegressionChart from "./RegressionChart.jsx";
 import Selector from './Selector.jsx';
 import HedgeAnalysis from './Hedge.jsx';
 import PortfolioInput from './PortfolioInput.jsx';
+import LanguageSelector from './LanguageSelector.jsx';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,6 +22,7 @@ function App() {
   const [formula, setFormula] = useState('');
   const [activeView, setActiveView] = useState('stock');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   const fetchData = (startDate = null, endDate = null, stockTicker = ticker) => {
     setLoading(true);
@@ -92,6 +96,11 @@ function App() {
         isOpen={isSidebarOpen}
         onToggle={() => setIsSidebarOpen(!isSidebarOpen)}
       />
+      <LanguageSelector 
+        isOpen={isSidebarOpen}
+        selectedLanguage={selectedLanguage} 
+        onLanguageChange={setSelectedLanguage}
+      />
       <main className="main-content">
         {activeView === 'stock' ? (
           <>
@@ -133,4 +142,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+    return (
+        <I18nextProvider i18n={i18n}>
+            <AppContent />
+        </I18nextProvider>
+    );
+}

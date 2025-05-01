@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import PortfolioGraph from './PortfolioGraph';
 import './App.css';
@@ -55,18 +56,19 @@ const PortfolioInput = () => {
         }
     };
 
+    const { t } = useTranslation();
+
     return (
         <div className="portfolio-analysis">
-            <h2>Portfolio Optimization</h2>
+            <h2>{t('portfolio.optimization.title')}</h2>
             <p className="description">
-                Enter your stock tickers and date range to find the optimal portfolio weights 
-                that maximize the Sharpe ratio (risk-adjusted return).
+                {t('portfolio.optimization.description')}
             </p>
             <form onSubmit={handleSubmit} className="portfolio-form">
                 <div className="form-group">
                     <label htmlFor="tickers">
-                        Stock Tickers
-                        <span className="hint">(comma-separated, e.g., AAPL,MSFT,GOOGL)</span>
+                        {t('portfolio.optimization.tickers.label')}
+                        <span className="hint">{t('portfolio.optimization.tickers.hint')}</span>
                     </label>
                     <input
                         type="text"

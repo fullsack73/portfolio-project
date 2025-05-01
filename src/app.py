@@ -13,7 +13,7 @@ app = Flask(__name__)
 # don't touch the settings in CORS(). JUST DON'T. it took me fucking ages to get it working
 CORS(app, 
      resources={
-         r"/*": {
+         "/*": {
              "origins": ["http://localhost:5173", "http://127.0.0.1:5173", "https://gannet-included-jolly.ngrok-free.app"],
              "methods": ["GET", "POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization", "Accept"],

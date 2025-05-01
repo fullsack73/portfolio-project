@@ -1,7 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './App.css';
 
 const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
+    const { t } = useTranslation();
+
     return (
         <>
             <button 
@@ -13,7 +16,7 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
             </button>
             <div className={`sidebar ${isOpen ? 'open' : ''}`}>
                 <div className="sidebar-header">
-                    <h2>Stock Analysis</h2>
+                    <h2>{t('navigation.stock')}</h2>
                     <button className="close-button" onClick={onToggle}>×</button>
                 </div>
                 <nav className="sidebar-nav">
@@ -25,7 +28,7 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
                         }}
                     >
                         <span className="icon">📈</span>
-                        Stock Data
+                        {t('navigation.stock')}
                     </button>
                     <button 
                         className={`nav-item ${activeView === 'hedge' ? 'active' : ''}`}
@@ -35,7 +38,7 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
                         }}
                     >
                         <span className="icon">🔄</span>
-                        Hedge Analysis
+                        {t('navigation.hedge')}
                     </button>
                     <button 
                         className={`nav-item ${activeView === 'portfolio' ? 'active' : ''}`}
@@ -45,7 +48,7 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
                         }}
                     >
                         <span className="icon">📊</span>
-                        Portfolio Analysis
+                        {t('navigation.portfolio')}
                     </button>
                 </nav>
             </div>

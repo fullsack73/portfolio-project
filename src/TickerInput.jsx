@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import './App.css';
 
 function TickerInput({ onTickerChange, onSubmit, initialTicker }) {
   const [ticker, setTicker] = useState(initialTicker);
@@ -16,21 +18,23 @@ function TickerInput({ onTickerChange, onSubmit, initialTicker }) {
     }
   };
 
+  const { t } = useTranslation();
+
   return (
     <div className="ticker-input-container">
       <form onSubmit={handleSubmit}>
         <div className="ticker-input-group">
-          <label htmlFor="ticker">Enter Stock Symbol:</label>
+          <label htmlFor="ticker">{t('ticker.label')}</label>
           <input
             type="text"
             id="ticker"
             value={ticker}
             onChange={handleInputChange}
-            placeholder="e.g., AAPL, MSFT, GOOGL"
+            placeholder={t('ticker.placeholder')}
             required
           />
         </div>
-        <button type="submit">Show Stock Data</button>
+        <button type="submit">{t('ticker.submit')}</button>
       </form>
     </div>
   );
