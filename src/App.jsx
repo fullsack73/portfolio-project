@@ -9,6 +9,8 @@ import Selector from './Selector.jsx';
 import HedgeAnalysis from './Hedge.jsx';
 import PortfolioInput from './PortfolioInput.jsx';
 import LanguageSelector from './LanguageSelector.jsx';
+import FutureDateInput from './FutureDateInput.jsx';
+import FutureChart from './FutureChart.jsx';
 import './App.css';
 
 function AppContent() {
@@ -20,6 +22,8 @@ function AppContent() {
   const [showChart, setShowChart] = useState(false);
   const [regressionData, setRegressionData] = useState(null);
   const [formula, setFormula] = useState('');
+  const [futureDays, setFutureDays] = useState(30);
+  const [futurePredictions, setFuturePredictions] = useState(null);
   const [activeView, setActiveView] = useState('stock');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
@@ -28,7 +32,7 @@ function AppContent() {
   const fetchData = (startDate = null, endDate = null, stockTicker = ticker) => {
     setLoading(true);
     // if this fails despite having right proxy settings, i'm fucked. but it should never fail
-    let url = `/api/get-data?ticker=${stockTicker}&regression=true`;
+    let url = `/api/get-data?ticker=${stockTicker}&regression=true&future_days=${futureDays}`;
     if (startDate && endDate) {
       url += `&start_date=${startDate}&end_date=${endDate}`;
     }
@@ -54,6 +58,7 @@ function AppContent() {
         console.log('Raw data received:', responseData);
         setData(responseData.prices);
         setRegressionData(responseData.regression);
+        setFuturePredictions(responseData.future_predictions);
         setCompanyName(responseData.companyName);
         setFormula(responseData.formula);
         setLoading(false);
@@ -80,6 +85,11 @@ function AppContent() {
   const handleTickerChange = (newTicker) => {
     setTicker(newTicker);
     fetchData(null, null, newTicker);
+  };
+
+  const handleFutureDaysChange = (days) => {
+    setFutureDays(days);
+    fetchData();
   };
 
   const handleSubmit = (e) => {
@@ -109,10 +119,12 @@ function AppContent() {
             <div className="controls-container">
               <TickerInput onTickerChange={handleTickerChange} onSubmit={handleSubmit} initialTicker="AAPL" />
               <DateInput onDateRangeChange={handleDateRangeChange} />
+              <FutureDateInput onFutureDaysChange={handleFutureDaysChange} initialDays={futureDays} />
             </div>
 
             {loading && <p className="loading">{t('common.loading')}</p>}
             {error && <p className="error">{t('common.error')}: {error}</p>}
+
 
             {showChart && data && (
               <>
@@ -130,6 +142,13 @@ function AppContent() {
                     />
                   </div>
                 </div>
+                {futurePredictions && (
+                  <div className="charts-container">
+                    <div className="chart-wrapper">
+                      <FutureChart data={futurePredictions} ticker={ticker} />
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </>

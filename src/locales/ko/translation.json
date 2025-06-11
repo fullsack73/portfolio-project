@@ -23,7 +23,8 @@
     "analysisPeriod": "분석 기간",
     "correlation": "상관관계",
     "pValue": "P-value",
-    "strength": "강도"
+    "strength": "강도",
+    "results": "결과"
   },
   "common": {
     "search": "검색",

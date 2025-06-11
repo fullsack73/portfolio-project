@@ -22,7 +22,7 @@ const HedgeAnalysis = () => {
         setError(null);
 
         try {
-            const url = new URL('/api/analyze-hedge', 'http://127.0.0.1:5000');
+            const url = new URL('/analyze-hedge', 'http://127.0.0.1:5000');
             url.searchParams.append('ticker1', ticker1.toUpperCase());
             url.searchParams.append('ticker2', ticker2.toUpperCase());
             if (startDate) url.searchParams.append('start_date', startDate);
@@ -105,33 +105,35 @@ const HedgeAnalysis = () => {
             {error && <div className="error-message">{error}</div>}
 
             {hedgeData && (
-                <div className="hedge-results">
+                <div>
                     <h3>{t('hedge.results')}</h3>
-                    
-                    <div className="result-card">
-                        <h4>{t('hedge.companies')}</h4>
-                        <p>{hedgeData.company1} ({hedgeData.ticker1})</p>
-                        <p>{hedgeData.company2} ({hedgeData.ticker2})</p>
-                    </div>
+                    <div className="hedge-results">
+                        
+                        <div className="result-card">
+                            <h4>{t('hedge.companies')}</h4>
+                            <p>{hedgeData.company1} ({hedgeData.ticker1})</p>
+                            <p>{hedgeData.company2} ({hedgeData.ticker2})</p>
+                        </div>
 
-                    <div className="result-card">
-                        <h4>{t('hedge.relationship')}</h4>
-                        <p className={hedgeData.is_hedge ? 'hedge-positive' : 'hedge-negative'}>
-                            {hedgeData.is_hedge ? 'Yes' : 'No'}
-                        </p>
-                        <p>{t('hedge.strength')}: {hedgeData.strength}</p>
-                    </div>
+                        <div className="result-card">
+                            <h4>{t('hedge.relationship')}</h4>
+                            <p className={hedgeData.is_hedge ? 'hedge-positive' : 'hedge-negative'}>
+                                {hedgeData.is_hedge ? 'Yes' : 'No'}
+                            </p>
+                            <p>{t('hedge.strength')}: {hedgeData.strength}</p>
+                        </div>
 
-                    <div className="result-card">
-                        <h4>{t('hedge.statisticalAnalysis')}</h4>
-                        <p>{t('hedge.correlation')}: {hedgeData.correlation.toFixed(3)}</p>
-                        <p>{t('hedge.pValue')}: {hedgeData.p_value.toFixed(4)}</p>
-                    </div>
+                        <div className="result-card">
+                            <h4>{t('hedge.statisticalAnalysis')}</h4>
+                            <p>{t('hedge.correlation')}: {hedgeData.correlation.toFixed(3)}</p>
+                            <p>{t('hedge.pValue')}: {hedgeData.p_value.toFixed(4)}</p>
+                        </div>
 
-                    <div className="result-card">
-                        <h4>{t('hedge.analysisPeriod')}</h4>
-                        <p>{t('date.start')}: {hedgeData.period.start}</p>
-                        <p>{t('date.end')}: {hedgeData.period.end}</p>
+                        <div className="result-card">
+                            <h4>{t('hedge.analysisPeriod')}</h4>
+                            <p>{t('date.start')}: {hedgeData.period.start}</p>
+                            <p>{t('date.end')}: {hedgeData.period.end}</p>
+                        </div>
                     </div>
                 </div>
             )}

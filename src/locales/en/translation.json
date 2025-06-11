@@ -23,7 +23,8 @@
     "analysisPeriod": "Analysis Period",
     "correlation": "Correlation",
     "pValue": "P-value",
-    "strength": "Strength"
+    "strength": "Strength",
+    "results": "Results"
   },
   "common": {
     "loading": "Loading...",

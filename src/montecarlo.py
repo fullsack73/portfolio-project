@@ -36,9 +36,8 @@ def validate_date_range(start_date, end_date):
         raise ValueError(f"Invalid date format. Please use YYYY-MM-DD format")
 
 def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None, riskless_rate=0.0):
-    # default tickers. to prevent the function from crashing. btw, why the fuck would anyone want to use this function without tickers??
     if tickers is None:
-        tickers = ['SPY', 'GLD', 'AAPL', 'MSFT']
+        tickers = ['AAPL', 'MSFT', 'GOOGL']
     
     noa = len(tickers)
     
@@ -148,10 +147,3 @@ def prepare_portfolio_data(opts, optv, rets, riskless_rate=0.0):
         'cml_rets': cml_rets.tolist()
     }
 
-# call the functions
-final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(riskless_rate=0.02)
-portfolio_data = prepare_portfolio_data(opts, optv, rets, riskless_rate=0.02)
-print("Final weights: ", final_weights)
-print("Final return: ", final_ret)
-print("Final volatility: ", final_vol)
-print("Final Sharpe ratio: ", final_sharpe)
