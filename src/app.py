@@ -4,10 +4,9 @@ import numpy as np
 import yfinance as yf # make sure to update the yf library to prevent interpreter from bitching
 from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import StandardScaler
 from hedge_analysis import analyze_hedge_relationship
 from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
-from sklearn.svm import SVR
+import lightgbm as lgb
 import pandas as pd
 
 app = Flask(__name__)
@@ -85,19 +84,12 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
         X = df[feature_columns].values
         y = df['Close'].values  # Target variable remains the closing price
         
-        # Scale the features
-        # Scaling is important for SVR and many other algorithms
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-        
-        # fit SVR model
-                # C is the regularization parameter. A smaller C encourages a simpler model to avoid overfitting.
-        # gamma='scale' is a robust default that adjusts based on the variance of the features.
-        model = SVR(kernel='rbf', C=5, gamma='scale', epsilon=0.1)
-        model.fit(X_scaled, y)
+        # fit LightGBM model
+        model = lgb.LGBMRegressor(n_estimators=100, learning_rate=0.1, num_leaves=31)
+        model.fit(X, y)
         
         # generate regression line
-        y_pred = model.predict(X_scaled)
+        y_pred = model.predict(X)
         
         # convert to date:value format for both original and regression data
         dates = df.index.strftime('%Y-%m-%d').tolist()
@@ -107,14 +99,10 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
         # get stock info
         info = stock.info
         company_name = info.get('longName', ticker)
-        
-        # SVR does not provide a simple formula
-        formula = "N/A (SVR model)"
 
         future_predictions = {}
-        if future_days > 0 and X_scaled.shape[0] > 0: # Ensure there's data to predict from
+        if future_days > 0 and X.shape[0] > 0: # Ensure there's data to predict from
             last_date = df.index[-1]
-            last_price = y[-1]
             # Keep a rolling window of prices for MA calculation, including historical and new predictions
             all_prices = list(y)
             # Last known volume (simplification)
@@ -128,35 +116,23 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
                 next_date = last_date + timedelta(days=i + 1)
                 
                 # Prepare features for the next day
-                # Lag1 is the last predicted price (or last actual price for the first future step)
                 lag1_future = all_prices[-1]
                 
-                # MA7 and MA21: need at least 7 and 21 points respectively
-                # Append the latest price to all_prices to calculate rolling MAs
-                # For the first few predictions, MAs might rely more on historical data
                 temp_prices_for_ma = pd.Series(all_prices)
                 ma7_future = temp_prices_for_ma.rolling(window=7).mean().iloc[-1] if len(temp_prices_for_ma) >= 7 else np.nan
                 ma21_future = temp_prices_for_ma.rolling(window=21).mean().iloc[-1] if len(temp_prices_for_ma) >= 21 else np.nan
 
-                # Time index continues to increment
                 time_future = last_time_index + i + 1
 
-                # Construct feature vector for the future day
-                # Order must match 'Time', 'MA7', 'MA21', 'Lag1', 'Volume'
                 future_feature_vector = np.array([[time_future, ma7_future, ma21_future, lag1_future, last_volume]])
                 
-                # Handle potential NaNs from MA calculation if not enough data points
-                # A simple strategy: use the last known MA if NaN
                 if np.isnan(future_feature_vector[0, 1]): # MA7
                     future_feature_vector[0, 1] = current_features_df['MA7'].iloc[-1] if not current_features_df['MA7'].empty else 0
                 if np.isnan(future_feature_vector[0, 2]): # MA21
                     future_feature_vector[0, 2] = current_features_df['MA21'].iloc[-1] if not current_features_df['MA21'].empty else 0
 
-                # Scale features
-                future_feature_vector_scaled = scaler.transform(future_feature_vector)
-                
                 # Predict
-                predicted_price = model.predict(future_feature_vector_scaled)[0]
+                predicted_price = model.predict(future_feature_vector)[0]
                 
                 # Store prediction and update for next iteration
                 future_predictions[next_date.strftime('%Y-%m-%d')] = float(predicted_price)
@@ -168,19 +144,17 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
             'future_predictions': future_predictions,
             'companyName': company_name,
             'slope': 'N/A',
-            'intercept': 'N/A',
-            'formula': formula
+            'intercept': 'N/A'
         }
         
     except Exception as e:
         print(f"Error generating regression data: {str(e)}")
         return {
-            'prices': {}, 
-            'regression': {}, 
+            'prices': {},
+            'regression': {},
             'companyName': ticker, 
             'slope': 'N/A', 
             'intercept': 'N/A',
-            'formula': "N/A (SVR model)",
             'future_predictions': {}
         }
 
@@ -220,13 +194,12 @@ def generate_data(ticker="", start_date=None, end_date=None):
             'prices': data,
             'companyName': company_name,
             'regression': {},
-            'formula': "",
             'future_predictions': {}
         }
         
     except Exception as e:
         print(f"Error fetching data: {str(e)}")
-        return {'prices': {}, 'companyName': ticker, 'regression': {}, 'formula': "", 'future_predictions': {}}
+        return {'prices': {}, 'companyName': ticker, 'regression': {}, 'future_predictions': {}}
     
 
     
