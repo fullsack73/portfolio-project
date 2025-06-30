@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import PortfolioGraph from './PortfolioGraph';
 import './App.css';
@@ -7,6 +8,7 @@ const PortfolioInput = () => {
     const [tickers, setTickers] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+    const [risklessRate, setRisklessRate] = useState('');
     const [metrics, setMetrics] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -24,6 +26,10 @@ const PortfolioInput = () => {
         setEndDate(event.target.value);
     };
 
+    const handleRisklessRateChange = (event) => {
+        setRisklessRate(event.target.value);
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setLoading(true);
@@ -37,7 +43,8 @@ const PortfolioInput = () => {
                 params: {
                     tickers: cleanTickers,
                     start_date: startDate,
-                    end_date: endDate
+                    end_date: endDate,
+                    riskless_rate: parseFloat(risklessRate) / 100
                 }
             });
             setMetrics(response.data);
@@ -49,18 +56,19 @@ const PortfolioInput = () => {
         }
     };
 
+    const { t } = useTranslation();
+
     return (
         <div className="portfolio-analysis">
-            <h2>Portfolio Optimization</h2>
+            <h2>{t('portfolio.optimization.title')}</h2>
             <p className="description">
-                Enter your stock tickers and date range to find the optimal portfolio weights 
-                that maximize the Sharpe ratio (risk-adjusted return).
+                {t('portfolio.optimization.description')}
             </p>
             <form onSubmit={handleSubmit} className="portfolio-form">
                 <div className="form-group">
                     <label htmlFor="tickers">
-                        Stock Tickers
-                        <span className="hint">(comma-separated, e.g., AAPL,MSFT,GOOGL)</span>
+                        {t('portfolio.optimization.title')}
+                        <span className="hint">{t('portfolio.optimization.description')}</span>
                     </label>
                     <input
                         type="text"
@@ -72,9 +80,25 @@ const PortfolioInput = () => {
                     />
                 </div>
 
+                <div className="form-group">
+                    <label htmlFor="risklessRate">
+                        {t('portfolio.risklessRate')} (%)
+                    </label>
+                    <input
+                        type="number"
+                        id="risklessRate"
+                        value={risklessRate}
+                        onChange={handleRisklessRateChange}
+                        placeholder="e.g., 2.5"
+                        step="any"
+                        min="0"
+                        required
+                    />
+                </div>
+
                 <div className="form-row">
                     <div className="form-group">
-                        <label htmlFor="startDate">Start Date</label>
+                        <label htmlFor="startDate">{t('date.start')}</label>
                         <input
                             type="date"
                             id="startDate"
@@ -85,7 +109,7 @@ const PortfolioInput = () => {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="endDate">End Date</label>
+                        <label htmlFor="endDate">{t('date.end')}</label>
                         <input
                             type="date"
                             id="endDate"
@@ -97,7 +121,7 @@ const PortfolioInput = () => {
                 </div>
 
                 <button type="submit" disabled={loading} className="submit-button">
-                    {loading ? 'Optimizing Portfolio...' : 'Find Optimal Portfolio'}
+                    {loading ? t('common.loading') : t('common.submit')}
                 </button>
             </form>
 
@@ -105,24 +129,24 @@ const PortfolioInput = () => {
 
             {metrics && (
                 <div className="metrics-container">
-                    <h3>Optimal Portfolio Results</h3>
+                    <h3>{t('portfolio.results')}</h3>
                     <div className="metrics-grid">
                         <div className="metric-card">
-                            <h4>Optimal Weights</h4>
+                            <h4>{t('portfolio.weights')}</h4>
                             <p>{metrics.final_weights.map((w, i) => `${(w * 100).toFixed(1)}%`).join(', ')}</p>
                         </div>
                         <div className="metric-card">
-                            <h4>Expected Return</h4>
+                            <h4>{t('portfolio.expectedReturn')}</h4>
                             <p className={metrics.final_return >= 0 ? 'positive' : 'negative'}>
                                 {(metrics.final_return * 100).toFixed(2)}%
                             </p>
                         </div>
                         <div className="metric-card">
-                            <h4>Portfolio Risk</h4>
+                            <h4>{t('portfolio.portfolioRisk')}</h4>
                             <p>{(metrics.final_volatility * 100).toFixed(2)}%</p>
                         </div>
                         <div className="metric-card">
-                            <h4>Sharpe Ratio</h4>
+                            <h4>{t('portfolio.sharpeRatio')}</h4>
                             <p>{metrics.final_sharpe_ratio.toFixed(2)}</p>
                         </div>
                     </div>

@@ -2,7 +2,7 @@ import React from 'react';
 import Plot from 'react-plotly.js';
 
 // linear regression for non-linear data. retarded, i know.
-function RegressionChart({ data, regression, ticker, formula }) {
+function RegressionChart({ data, regression, ticker }) {
   return (
     <Plot
       data={[
@@ -46,21 +46,7 @@ function RegressionChart({ data, regression, ticker, formula }) {
           y: 1,
           xanchor: 'right',
           yanchor: 'top'
-        },
-        annotations: [
-          {
-            text: formula,
-            x: 0.02,
-            y: 0.98,
-            xref: 'paper',
-            yref: 'paper',
-            showarrow: false,
-            font: {
-              size: 12,
-              color: 'red'
-            }
-          }
-        ]
+        }
       }}
     />
   );

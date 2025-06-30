@@ -1,0 +1,67 @@
+{
+  "navigation": {
+    "stock": "주식 데이터",
+    "hedge": "헷지 분석",
+    "portfolio": "포트폴리오 분석"
+  },
+  "date": {
+    "start": "시작 날짜",
+    "end": "종료 날짜"
+  },
+  "regression": {
+    "title": "주가 데이터 시각화",
+    "updateChart": "차트 업데이트",
+    "data": "주가 데이터"
+  },
+  "hedge": {
+    "title": "헷지 관계 분석",
+    "label1": "첫 번째 티커",
+    "label2": "두 번째 티커",
+    "companies": "기업",
+    "relationship": "관계",
+    "statisticalAnalysis": "통계 분석",
+    "analysisPeriod": "분석 기간",
+    "correlation": "상관관계",
+    "pValue": "P-value",
+    "strength": "강도",
+    "results": "결과"
+  },
+  "common": {
+    "search": "검색",
+    "submit": "제출",
+    "close": "닫기",
+    "menu": "메뉴",
+    "loading": "로딩 중...",
+    "error": "에러"
+  },
+  "stock": {
+    "title": "주식 분석",
+    "ticker": "티커 심볼",
+    "dateRange": "날짜 범위",
+    "start": "시작 날짜",
+    "end": "종료 날짜"
+  },
+  "portfolio": {
+    "title": "포트폴리오 분석",
+    "tickers": "티커",
+    "risklessRate": "무위험 금리",
+    "optimization": {
+      "title": "포트폴리오 최적화",
+      "description": "주식 티커와 날짜 범위를 입력하여 샤프 비율(위험 조정 수익률)을 최대화하는 최적의 포트폴리오 비중을 찾으세요."
+    },
+    "results": "포트폴리오 분석 결과",
+    "weights": "최적 자산 분배 비율",
+    "expectedReturn": "예상 수익률",
+    "portfolioRisk": "포트폴리오 위험도",
+    "sharpeRatio": "샤프 비율"
+  },
+  "ticker": {
+    "label": "주식 심볼 입력",
+    "placeholder": "예: AAPL, MSFT, GOOGL",
+    "submit": "주식 데이터 표시"
+  },
+  "future": {
+    "days_to_predict": "예측일",
+    "update_prediction": "예측 업데이트"
+  }
+}

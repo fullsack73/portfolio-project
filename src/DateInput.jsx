@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 function DateInput({ onDateRangeChange }) {
+  const { t } = useTranslation();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -30,7 +32,7 @@ function DateInput({ onDateRangeChange }) {
   return (
     <div className="date-input-container">
       <div className="date-input-group">
-        <label htmlFor="startDate">Start Date:</label>
+        <label htmlFor="startDate">{t('date.start')}</label>
         <input
           type="date"
           id="startDate"
@@ -39,7 +41,7 @@ function DateInput({ onDateRangeChange }) {
         />
       </div>
       <div className="date-input-group">
-        <label htmlFor="endDate">End Date:</label>
+        <label htmlFor="endDate">{t('date.end')}</label>
         <input
           type="date"
           id="endDate"
@@ -47,7 +49,7 @@ function DateInput({ onDateRangeChange }) {
           onChange={(e) => setEndDate(e.target.value)}
         />
       </div>
-      <button onClick={handleDateChange}>Update Chart</button>
+      <button onClick={handleDateChange}>{t('regression.updateChart')}</button>
     </div>
   );
 }
