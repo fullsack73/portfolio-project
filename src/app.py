@@ -91,7 +91,9 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
         X_scaled = scaler.fit_transform(X)
         
         # fit SVR model
-        model = SVR(kernel='rbf', C=100, gamma=0.1, epsilon=0.1)
+                # C is the regularization parameter. A smaller C encourages a simpler model to avoid overfitting.
+        # gamma='scale' is a robust default that adjusts based on the variance of the features.
+        model = SVR(kernel='rbf', C=5, gamma='scale', epsilon=0.1)
         model.fit(X_scaled, y)
         
         # generate regression line

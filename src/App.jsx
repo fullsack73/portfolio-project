@@ -22,6 +22,8 @@ function AppContent() {
   const [showChart, setShowChart] = useState(false);
   const [regressionData, setRegressionData] = useState(null);
   const [formula, setFormula] = useState('');
+  const [appStartDate, setAppStartDate] = useState(null);
+  const [appEndDate, setAppEndDate] = useState(null);
   const [futureDays, setFutureDays] = useState(30);
   const [futurePredictions, setFuturePredictions] = useState(null);
   const [activeView, setActiveView] = useState('stock');
@@ -71,25 +73,46 @@ function AppContent() {
       });
   };
 
-  // Initial data fetch
   useEffect(() => {
-    fetchData();
+    // Initialize appStartDate and appEndDate
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const threeMonthsAgo = new Date(yesterday);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const formatDate = (date) => date.toISOString().split('T')[0];
+
+    setAppStartDate(formatDate(threeMonthsAgo));
+    setAppEndDate(formatDate(yesterday));
   }, []);
 
-  const handleDateRangeChange = (startDate, endDate) => {
+  // Initial data fetch, now dependent on appStartDate and appEndDate
+  useEffect(() => {
+    if (appStartDate && appEndDate && ticker) {
+      fetchData(appStartDate, appEndDate, ticker);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appStartDate, appEndDate, ticker]); // Fetch when app dates are initialized or ticker changes initially.
+
+  const handleDateRangeChange = (newStartDate, newEndDate) => {
+    setAppStartDate(newStartDate);
+    setAppEndDate(newEndDate);
     if (ticker) {
-      fetchData(startDate, endDate);
+      fetchData(newStartDate, newEndDate, ticker);
     }
   };
 
   const handleTickerChange = (newTicker) => {
     setTicker(newTicker);
-    fetchData(null, null, newTicker);
+    // Use appStartDate and appEndDate if available, otherwise backend defaults (null, null)
+    fetchData(appStartDate, appEndDate, newTicker);
   };
 
   const handleFutureDaysChange = (days) => {
     setFutureDays(days);
-    fetchData();
+    // Use appStartDate and appEndDate if available, otherwise backend defaults (null, null)
+    fetchData(appStartDate, appEndDate, ticker);
   };
 
   const handleSubmit = (e) => {
