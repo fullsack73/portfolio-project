@@ -59,5 +59,9 @@
     "label": "주식 심볼 입력",
     "placeholder": "예: AAPL, MSFT, GOOGL",
     "submit": "주식 데이터 표시"
+  },
+  "future": {
+    "days_to_predict": "예측일",
+    "update_prediction": "예측 업데이트"
   }
 }

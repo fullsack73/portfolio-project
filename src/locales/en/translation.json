@@ -59,5 +59,9 @@
     "label": "Enter Stock Symbol",
     "placeholder": "e.g., AAPL, MSFT, GOOGL",
     "submit": "Show Stock Data"
+  },
+  "future": {
+    "days_to_predict": "Days to Predict",
+    "update_prediction": "Update Prediction"
   }
 }
