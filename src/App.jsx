@@ -11,6 +11,7 @@ import PortfolioInput from './PortfolioInput.jsx';
 import LanguageSelector from './LanguageSelector.jsx';
 import FutureDateInput from './FutureDateInput.jsx';
 import FutureChart from './FutureChart.jsx';
+import FinancialStatement from './FinancialStatement.jsx';
 import './App.css';
 
 function AppContent() {
@@ -177,6 +178,8 @@ function AppContent() {
           </>
         ) : activeView === 'hedge' ? (
           <HedgeAnalysis />
+        ) : activeView === 'financial' ? (
+          <FinancialStatement />
         ) : (
           <PortfolioInput />
         )}

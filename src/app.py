@@ -8,6 +8,7 @@ from hedge_analysis import analyze_hedge_relationship
 from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
 import lightgbm as lgb
 import pandas as pd
+from financial_statement import get_financial_ratios
 
 app = Flask(__name__)
 
@@ -267,6 +268,19 @@ def get_portfolio_metrics():
         return jsonify(data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/financial-statement', methods=['GET'])
+def financial_statement():
+    print("--- Received request for financial statement ---")
+    ticker = request.args.get('ticker')
+    if not ticker:
+        return jsonify({"error": "Ticker symbol is required"}), 400
+
+    data = get_financial_ratios(ticker)
+    if 'error' in data:
+        return jsonify(data), 404
+
+    return jsonify(data)
 
 if __name__ == '__main__':
     app.run(debug=True)

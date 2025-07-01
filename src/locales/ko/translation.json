@@ -2,7 +2,8 @@
   "navigation": {
     "stock": "주식 데이터",
     "hedge": "헷지 분석",
-    "portfolio": "포트폴리오 분석"
+    "portfolio": "포트폴리오 분석",
+    "financial": "재무제표 분석"
   },
   "date": {
     "start": "시작 날짜",
