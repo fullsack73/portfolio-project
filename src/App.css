@@ -83,12 +83,12 @@
 
 /* sidebar styles */
 .sidebar {
-    width: 250px;
+    width: 350px;
     background-color: #2c3e50;
     color: white;
     padding: 1rem;
     position: fixed;
-    left: -250px;
+    left: -350px;
     top: 0;
     height: 100vh;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -380,7 +380,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
-    margin: 2rem 0;
+}
+
+.centered-form-container {
+    max-width: 500px;
+    margin: 2rem auto;
 }
 
 .metric-card {

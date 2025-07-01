@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const FinancialStatement = () => {
+    const { t } = useTranslation();
     const [data, setData] = useState(null);
     const [ticker, setTicker] = useState('AAPL');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const fetchData = async () => {
         setLoading(true);
+        setError(null);
         setData(null);
         try {
             const response = await fetch(`/api/financial-statement?ticker=${ticker}`);
@@ -20,92 +24,59 @@ const FinancialStatement = () => {
             setData(result);
         } catch (error) {
             console.error("Fetch error:", error);
-            setData({ error: error.message });
+            setError(error.message);
         } finally {
             setLoading(false);
         }
     };
 
+    const renderMetricCard = (title, value, tooltip) => (
+        <div className="metric-card">
+            <h4>
+                {title}
+                <div className="group relative ml-2 inline-block">
+                    <span className="cursor-pointer">ⓘ</span>
+                    <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {tooltip}
+                    </div>
+                </div>
+            </h4>
+            <p>{value}</p>
+        </div>
+    );
+
     return (
-        <div className="p-4">
-            <h2 className="text-2xl font-bold mb-4">Financial Statement Analysis</h2>
-            <div className="flex mb-4">
-                <input 
-                    type="text" 
-                    value={ticker} 
-                    onChange={(e) => setTicker(e.target.value)} 
-                    className="border p-2 mr-2"
-                    placeholder="Enter Ticker Symbol"
-                />
-                <button onClick={fetchData} className="bg-blue-500 text-white p-2 rounded">Fetch Data</button>
+        <div className="financial-analysis">
+            <h1>{t('financial.title')}</h1>
+            <div className="centered-form-container">
+                <div className="form-group">
+                    <label htmlFor="ticker-input">{t('ticker.label')}</label>
+                    <input 
+                        id="ticker-input"
+                        type="text" 
+                        value={ticker} 
+                        onChange={(e) => setTicker(e.target.value.toUpperCase())} 
+                        placeholder={t('ticker.placeholder')}
+                    />
+                </div>
+                <button onClick={fetchData} className="submit-button" disabled={loading}>
+                    {loading ? t('common.loading') : t('financial.fetch_data')}
+                </button>
             </div>
-            {loading && <p>Loading...</p>}
-            {data && data.error && <p className="text-red-500">{data.error}</p>}
-            {data && !data.error && (
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 border rounded">
-                        <h3 className="font-bold">Company</h3>
-                        <p>{data.longName} ({data.ticker})</p>
+
+            {error && <p className="error-message">{t('common.error')}: {error}</p>}
+
+            {data && (
+                <div className="metrics-container">
+                    <div className="text-center mb-4">
+                        <h2 className="text-2xl font-bold">{data.longName} ({data.ticker})</h2>
                     </div>
-                    <div className="p-4 border rounded">
-                        <div className="flex items-center">
-                            <h3 className="font-bold">Price to Earnings (P/E)</h3>
-                            <div className="group relative ml-2">
-                                <span className="cursor-pointer">ⓘ</span>
-                                <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    Measures the company's current share price relative to its per-share earnings. A high P/E could mean the stock is overvalued, or that investors are expecting high growth rates.
-                                </div>
-                            </div>
-                        </div>
-                        <p>{data.per}</p>
-                    </div>
-                    <div className="p-4 border rounded">
-                        <div className="flex items-center">
-                            <h3 className="font-bold">Price to Book (P/B)</h3>
-                            <div className="group relative ml-2">
-                                <span className="cursor-pointer">ⓘ</span>
-                                <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    Compares a company's market capitalization to its book value. A lower P/B ratio could mean the stock is undervalued.
-                                </div>
-                            </div>
-                        </div>
-                        <p>{data.pbr}</p>
-                    </div>
-                    <div className="p-4 border rounded">
-                        <div className="flex items-center">
-                            <h3 className="font-bold">Price to Sales (P/S)</h3>
-                            <div className="group relative ml-2">
-                                <span className="cursor-pointer">ⓘ</span>
-                                <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    Compares a company's stock price to its revenues. It is often used for growth stocks that have yet to achieve profitability.
-                                </div>
-                            </div>
-                        </div>
-                        <p>{data.psr}</p>
-                    </div>
-                    <div className="p-4 border rounded">
-                        <div className="flex items-center">
-                            <h3 className="font-bold">Debt Ratio</h3>
-                            <div className="group relative ml-2">
-                                <span className="cursor-pointer">ⓘ</span>
-                                <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    Measures the extent of a company’s leverage. A debt ratio greater than 1.0 means the company has more debt than assets.
-                                </div>
-                            </div>
-                        </div>
-                        <p>{data.debt_ratio}</p>
-                    </div>
-                    <div className="p-4 border rounded">
-                        <div className="flex items-center">
-                            <h3 className="font-bold">Liquidity Ratio (Current Ratio)</h3>
-                            <div className="group relative ml-2">
-                                <span className="cursor-pointer">ⓘ</span>
-                                <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                    Measures a company's ability to pay short-term obligations. A ratio under 1 indicates that the company has more liabilities than assets.
-                                </div>
-                            </div>
-                        </div>
-                        <p>{data.liquidity_ratio}</p>
+                    <div className="metrics-grid">
+                        {renderMetricCard(t('financial.per'), data.per, t('financial.per_tooltip'))}
+                        {renderMetricCard(t('financial.pbr'), data.pbr, t('financial.pbr_tooltip'))}
+                        {renderMetricCard(t('financial.psr'), data.psr, t('financial.psr_tooltip'))}
+                        {renderMetricCard(t('financial.debt_ratio'), data.debt_ratio, t('financial.debt_ratio_tooltip'))}
+                        {renderMetricCard(t('financial.liquidity_ratio'), data.liquidity_ratio, t('financial.liquidity_ratio_tooltip'))}
                     </div>
                 </div>
             )}
