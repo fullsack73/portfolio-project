@@ -27,8 +27,8 @@ def get_financial_ratios(ticker_symbol):
         if not balance_sheet.empty:
             # yfinance balance sheet columns are timestamps, get the most recent one
             latest_column = balance_sheet.columns[0]
-            if 'Total Liab' in balance_sheet.index and 'Total Assets' in balance_sheet.index:
-                total_debt = balance_sheet.loc['Total Liab', latest_column]
+            if 'Total Liabilities Net Minority Interest' in balance_sheet.index and 'Total Assets' in balance_sheet.index:
+                total_debt = balance_sheet.loc['Total Liabilities Net Minority Interest', latest_column]
                 total_assets = balance_sheet.loc['Total Assets', latest_column]
                 debt_ratio = total_debt / total_assets if total_assets else None
 
