@@ -7,6 +7,7 @@ const FinancialStatement = () => {
     const [ticker, setTicker] = useState('AAPL');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [hoveredMetric, setHoveredMetric] = useState(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -31,24 +32,23 @@ const FinancialStatement = () => {
     };
 
     const renderMetricCard = (title, value, tooltip) => (
-        <div className="metric-card">
-            <h4>
-                {title}
-                <div className="group relative ml-2 inline-block">
-                    <span className="cursor-pointer">ⓘ</span>
-                    <div className="absolute bottom-full mb-2 w-64 bg-gray-700 text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        {tooltip}
-                    </div>
-                </div>
-            </h4>
+        <div 
+            className="metric-card"
+            onMouseEnter={() => setHoveredMetric(title)}
+            onMouseLeave={() => setHoveredMetric(null)}
+        >
+            <h4>{title}</h4>
             <p>{value}</p>
+            <div className={`metric-tooltip ${hoveredMetric === title ? 'visible' : ''}`}>
+                {tooltip}
+            </div>
         </div>
     );
 
     return (
         <div className="financial-analysis">
             <h1>{t('financial.title')}</h1>
-            <div className="centered-form-container">
+            <div className="input-form-container">
                 <div className="form-group">
                     <label htmlFor="ticker-input">{t('ticker.label')}</label>
                     <input 

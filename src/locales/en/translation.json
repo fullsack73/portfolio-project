@@ -67,7 +67,7 @@
   },
   "financial": {
     "title": "Financial Statement Analysis",
-    "fetch_data": "Fetch Financial Data",
+    "fetch_data": "Fetch Data",
     "per": "Price to Earnings (P/E)",
     "per_tooltip": "Measures the company's current share price relative to its per-share earnings. A high P/E could mean the stock is overvalued, or that investors are expecting high growth rates.",
     "pbr": "Price to Book (P/B)",

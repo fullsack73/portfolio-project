@@ -349,7 +349,7 @@
 
 .submit-button {
     width: 100%;
-    padding: 1rem;
+    padding: 0.7rem;
     background-color: #3498db;
     color: white;
     border: none;
@@ -382,6 +382,24 @@
     gap: 1.5rem;
 }
 
+.input-form-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    max-width: 500px;
+    margin: 2rem auto;
+}
+
+.input-form-container .form-group {
+    flex-grow: 1;
+    margin-bottom: 0;
+}
+
+.input-form-container .submit-button {
+    flex-shrink: 0;
+    width: auto;
+}
+
 .centered-form-container {
     max-width: 500px;
     margin: 2rem auto;
@@ -393,6 +411,26 @@
     border-radius: 8px;
     border: 1px solid #dee2e6;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-tooltip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(44, 62, 80, 0.9);
+    color: white;
+    padding: 1rem;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.metric-tooltip.visible {
+    transform: translateY(0);
 }
 
 .metric-card h4 {
