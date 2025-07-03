@@ -382,17 +382,32 @@
     gap: 1.5rem;
 }
 
-.input-form-container {
-    display: flex;
-    align-items: flex-end;
-    gap: 1rem;
+/* Styles for the refactored financial statement form */
+.input-form-wrapper {
     max-width: 500px;
     margin: 2rem auto;
 }
 
-.input-form-container .form-group {
+.input-form-wrapper label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.input-form-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.input-form-container input {
     flex-grow: 1;
-    margin-bottom: 0;
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
 }
 
 .input-form-container .submit-button {

@@ -48,9 +48,9 @@ const FinancialStatement = () => {
     return (
         <div className="financial-analysis">
             <h1>{t('financial.title')}</h1>
-            <div className="input-form-container">
-                <div className="form-group">
-                    <label htmlFor="ticker-input">{t('ticker.label')}</label>
+            <div className="input-form-wrapper">
+                <label htmlFor="ticker-input">{t('ticker.label')}</label>
+                <div className="input-form-container">
                     <input 
                         id="ticker-input"
                         type="text" 
@@ -58,10 +58,10 @@ const FinancialStatement = () => {
                         onChange={(e) => setTicker(e.target.value.toUpperCase())} 
                         placeholder={t('ticker.placeholder')}
                     />
+                    <button onClick={fetchData} className="submit-button" disabled={loading}>
+                        {loading ? t('common.loading') : t('financial.fetch_data')}
+                    </button>
                 </div>
-                <button onClick={fetchData} className="submit-button" disabled={loading}>
-                    {loading ? t('common.loading') : t('financial.fetch_data')}
-                </button>
             </div>
 
             {error && <p className="error-message">{t('common.error')}: {error}</p>}
