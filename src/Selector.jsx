@@ -50,6 +50,16 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
                         <span className="icon">📊</span>
                         {t('navigation.portfolio')}
                     </button>
+                    <button 
+                        className={`nav-item ${activeView === 'financial' ? 'active' : ''}`}
+                        onClick={() => {
+                            onViewChange('financial');
+                            onToggle();
+                        }}
+                    >
+                        <span className="icon">📄</span>
+                        {t('navigation.financial')}
+                    </button>
                 </nav>
             </div>
         </>

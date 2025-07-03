@@ -83,12 +83,12 @@
 
 /* sidebar styles */
 .sidebar {
-    width: 250px;
+    width: 350px;
     background-color: #2c3e50;
     color: white;
     padding: 1rem;
     position: fixed;
-    left: -250px;
+    left: -350px;
     top: 0;
     height: 100vh;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
@@ -349,7 +349,7 @@
 
 .submit-button {
     width: 100%;
-    padding: 1rem;
+    padding: 0.7rem;
     background-color: #3498db;
     color: white;
     border: none;
@@ -380,7 +380,44 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1.5rem;
-    margin: 2rem 0;
+}
+
+/* Styles for the refactored financial statement form */
+.input-form-wrapper {
+    max-width: 500px;
+    margin: 2rem auto;
+}
+
+.input-form-wrapper label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.input-form-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.input-form-container input {
+    flex-grow: 1;
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.input-form-container .submit-button {
+    flex-shrink: 0;
+    width: auto;
+}
+
+.centered-form-container {
+    max-width: 500px;
+    margin: 2rem auto;
 }
 
 .metric-card {
@@ -389,6 +426,26 @@
     border-radius: 8px;
     border: 1px solid #dee2e6;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-tooltip {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(44, 62, 80, 0.9);
+    color: white;
+    padding: 1rem;
+    transform: translateY(100%);
+    transition: transform 0.3s ease-in-out;
+    font-size: 0.9rem;
+    text-align: left;
+}
+
+.metric-tooltip.visible {
+    transform: translateY(0);
 }
 
 .metric-card h4 {

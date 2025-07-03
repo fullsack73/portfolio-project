@@ -12,9 +12,9 @@ this program shows stock data, regresion line, hedge info, and provides optimize
 ### 1. Stock Data Visualization
 - shows financial timeline for given ticker
 
-### 2. Linear Regression
-- shows regression data
-- nothing but accurate depiction of price trend, since it's conducting linear regression with non-linear data. but i couldn't think of any better way.(might change later)
+### 2. LightGBM Regression
+- shows regression data(prediction of the price)
+- uses LightGBM to predict the price
 
 ### 3. Hedge Relation Analysis
 - it tells you the 2 stocks you provided are in hedge or not

@@ -2,7 +2,8 @@
   "navigation": {
     "stock": "Stock Data",
     "hedge": "Hedge Analysis",
-    "portfolio": "Portfolio Analysis"
+    "portfolio": "Portfolio Analysis",
+    "financial": "Financial Statement Analysis"
   },
   "date": {
     "start": "Start Date",
@@ -63,5 +64,19 @@
   "future": {
     "days_to_predict": "Days to Predict",
     "update_prediction": "Update Prediction"
+  },
+  "financial": {
+    "title": "Financial Statement Analysis",
+    "fetch_data": "Fetch Data",
+    "per": "Price to Earnings (P/E)",
+    "per_tooltip": "Measures the company's current share price relative to its per-share earnings. A high P/E could mean the stock is overvalued, or that investors are expecting high growth rates.",
+    "pbr": "Price to Book (P/B)",
+    "pbr_tooltip": "Compares a company's market capitalization to its book value. A lower P/B ratio could mean the stock is undervalued.",
+    "psr": "Price to Sales (P/S)",
+    "psr_tooltip": "Compares a company's stock price to its revenues. It is often used for growth stocks that have yet to achieve profitability.",
+    "debt_ratio": "Debt Ratio",
+    "debt_ratio_tooltip": "Measures the extent of a company’s leverage. A debt ratio greater than 1.0 means the company has more debt than assets.",
+    "liquidity_ratio": "Liquidity Ratio (Current Ratio)",
+    "liquidity_ratio_tooltip": "Measures a company's ability to pay short-term obligations. A ratio under 1 indicates that the company has more liabilities than assets."
   }
 }
