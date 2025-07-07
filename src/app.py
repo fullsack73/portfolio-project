@@ -254,11 +254,13 @@ def get_portfolio_metrics():
 
     try:
         # calculate portfolio metrics.
-        final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(tickers, start_date, end_date, riskless_rate)
+        optimal_portfolio, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(tickers, start_date, end_date, riskless_rate)
         portfolio_data = prepare_portfolio_data(opts, optv, rets, riskless_rate)
+
+        print("Optimal portfolio weights:", optimal_portfolio) # This will now print the ticker and weight
         
         data = {
-            'final_weights': final_weights.tolist(),
+            'final_weights': optimal_portfolio,
             'final_return': final_ret,
             'final_volatility': final_vol,
             'final_sharpe_ratio': final_sharpe,

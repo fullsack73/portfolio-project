@@ -133,7 +133,7 @@ const PortfolioInput = () => {
                     <div className="metrics-grid">
                         <div className="metric-card">
                             <h4>{t('portfolio.weights')}</h4>
-                            <p>{metrics.final_weights.map((w, i) => `${(w * 100).toFixed(1)}%`).join(', ')}</p>
+                            <p>{Object.entries(metrics.final_weights).map(([ticker, weight]) => `${ticker}: ${weight}`).join(', ')}</p>
                         </div>
                         <div className="metric-card">
                             <h4>{t('portfolio.expectedReturn')}</h4>

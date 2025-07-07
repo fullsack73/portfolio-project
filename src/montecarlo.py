@@ -74,12 +74,14 @@ def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None, ri
     opts = sco.minimize(min_func_sharpe, weights, args=(rets, riskless_rate), method='SLSQP', bounds=bounds, constraints=cons)
     optv = sco.minimize(port_vol, weights, args=(rets,), method='SLSQP', bounds=bounds, constraints=cons)
     
-    final_weights = opts['x'].round(3)
+    final_weights = opts['x']
     final_ret = port_ret(final_weights, rets)
     final_vol = port_vol(final_weights, rets)
     final_sharpe = (final_ret - riskless_rate) / final_vol
-    
-    return final_weights, final_ret, final_vol, final_sharpe, opts, optv, rets
+
+    optimal_portfolio = {ticker: f'{weight:.2%}' for ticker, weight in zip(tickers, final_weights)}
+
+    return optimal_portfolio, final_ret, final_vol, final_sharpe, opts, optv, rets
 
 def prepare_portfolio_data(opts, optv, rets, riskless_rate=0.0):
     # generate random portfolios for visualization
