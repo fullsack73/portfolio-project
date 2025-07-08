@@ -89,7 +89,7 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
         y = df['Close'].values  # Target variable remains the closing price
         
         # fit LightGBM model
-        model = lgb.LGBMRegressor(n_estimators=100, learning_rate=0.1, num_leaves=31)
+        model = lgb.LGBMRegressor(n_estimators=100, learning_rate=0.1, num_leaves=31, verbose=-1)
         model.fit(X, y)
         
         # generate regression line
