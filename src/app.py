@@ -82,7 +82,7 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
             
         # Prepare data for regression using the new features
         feature_columns = ['Time', 'MA7', 'MA21', 'Lag1', 'Volume']
-        X = df[feature_columns].values
+        X = df[feature_columns]
         y = df['Close'].values  # Target variable remains the closing price
         
         # fit LightGBM model
@@ -102,12 +102,12 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
         company_name = info.get('longName', ticker)
 
         future_predictions = {}
-        if future_days > 0 and X.shape[0] > 0: # Ensure there's data to predict from
+        if future_days > 0 and not X.empty: # Ensure there's data to predict from
             last_date = df.index[-1]
             # Keep a rolling window of prices for MA calculation, including historical and new predictions
             all_prices = list(y)
             # Last known volume (simplification)
-            last_volume = df['Volume'].iloc[-1] if 'Volume' in df.columns and not df['Volume'].empty else 0 
+            last_volume = df['Volume'].iloc[-1] if 'Volume' in df.columns and not df['Volume'].empty else 0
             # Last time index
             last_time_index = df['Time'].iloc[-1]
 
@@ -125,15 +125,16 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
 
                 time_future = last_time_index + i + 1
 
-                future_feature_vector = np.array([[time_future, ma7_future, ma21_future, lag1_future, last_volume]])
+                future_feature_vector = [[time_future, ma7_future, ma21_future, lag1_future, last_volume]]
                 
-                if np.isnan(future_feature_vector[0, 1]): # MA7
-                    future_feature_vector[0, 1] = current_features_df['MA7'].iloc[-1] if not current_features_df['MA7'].empty else 0
-                if np.isnan(future_feature_vector[0, 2]): # MA21
-                    future_feature_vector[0, 2] = current_features_df['MA21'].iloc[-1] if not current_features_df['MA21'].empty else 0
+                if np.isnan(future_feature_vector[0][1]): # MA7
+                    future_feature_vector[0][1] = current_features_df['MA7'].iloc[-1] if not current_features_df['MA7'].empty else 0
+                if np.isnan(future_feature_vector[0][2]): # MA21
+                    future_feature_vector[0][2] = current_features_df['MA21'].iloc[-1] if not current_features_df['MA21'].empty else 0
 
                 # Predict
-                predicted_price = model.predict(future_feature_vector)[0]
+                future_df = pd.DataFrame(future_feature_vector, columns=feature_columns)
+                predicted_price = model.predict(future_df)[0]
                 
                 # Store prediction and update for next iteration
                 future_predictions[next_date.strftime('%Y-%m-%d')] = float(predicted_price)
