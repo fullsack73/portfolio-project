@@ -5,7 +5,7 @@ from ticker_lists import get_ticker_group
 
 def get_stock_data(tickers, start_date, end_date):
     """Fetch historical stock data from Yahoo Finance."""
-    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    data = yf.download(tickers, start=start_date, end=end_date)['Close']
     return data
 
 def calculate_portfolio_performance(weights, mean_returns, cov_matrix):

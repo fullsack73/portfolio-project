@@ -21,7 +21,7 @@ const Optimizer = () => {
         setOptimizedPortfolio(null);
 
         try {
-            const response = await axios.post('/api/optimize-portfolio-new', {
+                        const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', {
                 ticker_group: tickerGroup,
                 start_date: startDate,
                 end_date: endDate,

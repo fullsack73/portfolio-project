@@ -9,6 +9,9 @@ from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
 import lightgbm as lgb
 import pandas as pd
 from financial_statement import get_financial_ratios
+from portfolio_optimization import optimize_portfolio
+from ticker_lists import get_ticker_group
+
 
 app = Flask(__name__)
 
@@ -285,14 +288,8 @@ def financial_statement():
 
     return jsonify(data)
 
-if __name__ == '__main__':
-    app.run(debug=True)
-
-from portfolio_optimization import optimize_portfolio as optimize_portfolio_new
-from ticker_lists import get_ticker_group
-
-@app.route('/api/optimize-portfolio-new', methods=['POST'])
-def optimize_portfolio_route():
+@app.route('/api/optimize-portfolio', methods=['POST'])
+def optimize_portfolio_endpoint():
     data = request.get_json()
     
     ticker_group = data.get('ticker_group')
@@ -303,12 +300,13 @@ def optimize_portfolio_route():
     risk_tolerance = data.get('risk_tolerance')
     
     try:
-        # Validate and get the list of tickers
-        get_ticker_group(ticker_group)
-        
-        optimized_portfolio = optimize_portfolio_new(ticker_group, start_date, end_date, risk_free_rate, target_return, risk_tolerance)
+        # The ticker group is validated within the optimize_portfolio function
+        optimized_portfolio = optimize_portfolio(ticker_group, start_date, end_date, risk_free_rate, target_return, risk_tolerance)
         return jsonify(optimized_portfolio)
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
