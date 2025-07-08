@@ -12,6 +12,7 @@ import LanguageSelector from './LanguageSelector.jsx';
 import FutureDateInput from './FutureDateInput.jsx';
 import FutureChart from './FutureChart.jsx';
 import FinancialStatement from './FinancialStatement.jsx';
+import Optimizer from './Optimizer.jsx';
 import './App.css';
 
 function AppContent() {
@@ -180,6 +181,8 @@ function AppContent() {
           <HedgeAnalysis />
         ) : activeView === 'financial' ? (
           <FinancialStatement />
+        ) : activeView === 'optimizer' ? (
+          <Optimizer />
         ) : (
           <PortfolioInput />
         )}

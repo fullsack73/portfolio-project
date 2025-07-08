@@ -287,3 +287,28 @@ def financial_statement():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+from portfolio_optimization import optimize_portfolio as optimize_portfolio_new
+from ticker_lists import get_ticker_group
+
+@app.route('/api/optimize-portfolio-new', methods=['POST'])
+def optimize_portfolio_route():
+    data = request.get_json()
+    
+    ticker_group = data.get('ticker_group')
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    risk_free_rate = data.get('risk_free_rate')
+    target_return = data.get('target_return')
+    risk_tolerance = data.get('risk_tolerance')
+    
+    try:
+        # Validate and get the list of tickers
+        get_ticker_group(ticker_group)
+        
+        optimized_portfolio = optimize_portfolio_new(ticker_group, start_date, end_date, risk_free_rate, target_return, risk_tolerance)
+        return jsonify(optimized_portfolio)
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

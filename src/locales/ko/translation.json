@@ -3,7 +3,8 @@
     "stock": "주식 데이터",
     "hedge": "헷지 분석",
     "portfolio": "포트폴리오 분석",
-    "financial": "재무제표 분석"
+    "financial": "재무제표 분석",
+    "optimizer": "포트폴리오 최적화"
   },
   "date": {
     "start": "시작 날짜",
@@ -78,5 +79,20 @@
     "debt_ratio_tooltip": "회사의 레버리지 정도를 측정합니다. 부채 비율이 1.0보다 크면 회사가 자산보다 부채가 많다는 것을 의미합니다.",
     "liquidity_ratio": "유동성 비율 (유동 비율)",
     "liquidity_ratio_tooltip": "회사의 단기 채무 상환 능력을 측정합니다. 비율이 1 미만이면 회사가 자산보다 부채가 많다는 것을 나타냅니다."
+  },
+  "optimizer": {
+    "title": "포트폴리오 최적화",
+    "tickerGroup": "티커 그룹",
+    "startDate": "시작 날짜",
+    "endDate": "종료 날짜",
+    "riskFreeRate": "무위험 이자율 (%)",
+    "targetReturn": "목표 수익률 (%)",
+    "riskTolerance": "위험 허용 수준 (%)",
+    "submit": "포트폴리오 최적화",
+    "results": "최적화된 포트폴리오",
+    "weights": "가중치",
+    "return": "예상 수익률",
+    "risk": "위험 (표준 편차)",
+    "sharpeRatio": "샤프 비율"
   }
 }
