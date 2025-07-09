@@ -7,7 +7,7 @@ const Optimizer = () => {
     const [tickerGroup, setTickerGroup] = useState('SP500');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [riskFreeRate, setRiskFreeRate] = useState('');
+    const [riskFreeRate, setRiskFreeRate] = useState('0.02');
     const [targetReturn, setTargetReturn] = useState('');
     const [riskTolerance, setRiskTolerance] = useState('');
     const [optimizedPortfolio, setOptimizedPortfolio] = useState(null);
@@ -21,7 +21,7 @@ const Optimizer = () => {
         setOptimizedPortfolio(null);
 
         try {
-                        const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', {
+            const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', {
                 ticker_group: tickerGroup,
                 start_date: startDate,
                 end_date: endDate,
@@ -37,51 +37,73 @@ const Optimizer = () => {
     };
 
     return (
-        <div>
+        <div className="optimizer-container">
             <h2>{t('optimizer.title')}</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>{t('optimizer.tickerGroup')}</label>
-                    <select value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)} required>
-                        <option value="SP500">S&P 500</option>
-                        {/* Add other ticker groups here in the future */}
-                    </select>
+            <form onSubmit={handleSubmit} className="optimizer-form">
+                <div className="optimizer-form-grid">
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.tickerGroup')}</label>
+                        <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)} required>
+                            <option value="SP500">S&P 500</option>
+                            {/* Add other ticker groups here */}
+                        </select>
+                    </div>
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.startDate')}</label>
+                        <input className="optimizer-input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+                    </div>
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.endDate')}</label>
+                        <input className="optimizer-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+                    </div>
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.riskFreeRate')}</label>
+                        <input className="optimizer-input" type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="e.g., 0.02" required />
+                    </div>
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.targetReturn')} ({t('common.optional')})</label>
+                        <input className="optimizer-input" type="number" value={targetReturn} onChange={(e) => setTargetReturn(e.target.value)} placeholder="e.g., 0.20" />
+                    </div>
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.riskTolerance')} ({t('common.optional')})</label>
+                        <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 0.15" />
+                    </div>
+                    <button type="submit" className="optimizer-submit-button" disabled={loading}>
+                        {loading ? t('common.loading') : t('optimizer.submit')}
+                    </button>
                 </div>
-                <div>
-                    <label>{t('optimizer.startDate')}</label>
-                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-                </div>
-                <div>
-                    <label>{t('optimizer.endDate')}</label>
-                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-                </div>
-                <div>
-                    <label>{t('optimizer.riskFreeRate')}</label>
-                    <input type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="0.02" required />
-                </div>
-                <div>
-                    <label>{t('optimizer.targetReturn')}</label>
-                    <input type="number" value={targetReturn} onChange={(e) => setTargetReturn(e.target.value)} placeholder="0.20" />
-                </div>
-                <div>
-                    <label>{t('optimizer.riskTolerance')}</label>
-                    <input type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="0.15" />
-                </div>
-                <button type="submit" disabled={loading}>{loading ? t('common.loading') : t('optimizer.submit')}</button>
             </form>
-            {error && <div style={{ color: 'red' }}>{error}</div>}
+
+            {error && <div className="optimizer-error">{error}</div>}
+
             {optimizedPortfolio && (
-                <div>
+                <div className="optimizer-results-container">
                     <h3>{t('optimizer.results')}</h3>
-                    <p>{t('optimizer.weights')}:</p>
-                    <ul>
-                        {Object.entries(optimizedPortfolio.weights).map(([ticker, weight]) => (
-                            <li key={ticker}>{ticker}: {(weight * 100).toFixed(2)}%</li>
-                        ))}
-                    </ul>
-                    <p>{t('optimizer.return')}: {(optimizedPortfolio.return * 100).toFixed(2)}%</p>
-                    <p>{t('optimizer.risk')}: {(optimizedPortfolio.risk * 100).toFixed(2)}%</p>
-                    <p>{t('optimizer.sharpeRatio')}: {optimizedPortfolio.sharpe_ratio.toFixed(2)}</p>
+                    <div className="optimizer-results-grid">
+                        <div className="optimizer-result-card">
+                            <h4>{t('optimizer.return')}</h4>
+                            <p>{(optimizedPortfolio.return * 100).toFixed(2)}%</p>
+                        </div>
+                        <div className="optimizer-result-card">
+                            <h4>{t('optimizer.risk')}</h4>
+                            <p>{(optimizedPortfolio.risk * 100).toFixed(2)}%</p>
+                        </div>
+                        <div className="optimizer-result-card">
+                            <h4>{t('optimizer.sharpeRatio')}</h4>
+                            <p>{optimizedPortfolio.sharpe_ratio.toFixed(2)}</p>
+                        </div>
+                    </div>
+                    <div className="optimizer-weights-card">
+                        <h4>{t('optimizer.weights')}</h4>
+                        <ul className="optimizer-weights-list">
+                            {Object.entries(optimizedPortfolio.weights).map(([ticker, weight]) => (
+                                <li key={ticker}>
+                                    <span>{ticker}</span>
+                                    <strong>{(weight * 100).toFixed(2)}%</strong>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             )}
         </div>
