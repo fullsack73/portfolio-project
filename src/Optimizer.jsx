@@ -61,11 +61,11 @@ const Optimizer = () => {
                         <input className="optimizer-input" type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="e.g., 0.02" required />
                     </div>
                     <div className="optimizer-form-group">
-                        <label>{t('optimizer.targetReturn')} ({t('common.optional')})</label>
+                        <label>{t('optimizer.targetReturn')}</label>
                         <input className="optimizer-input" type="number" value={targetReturn} onChange={(e) => setTargetReturn(e.target.value)} placeholder="e.g., 0.20" />
                     </div>
                     <div className="optimizer-form-group">
-                        <label>{t('optimizer.riskTolerance')} ({t('common.optional')})</label>
+                        <label>{t('optimizer.riskTolerance')}</label>
                         <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 0.15" />
                     </div>
                     <button type="submit" className="optimizer-submit-button" disabled={loading}>
