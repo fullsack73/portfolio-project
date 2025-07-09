@@ -650,3 +650,10 @@
     text-align: center;
     margin-top: 1rem;
 }
+
+.input-with-symbol {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+

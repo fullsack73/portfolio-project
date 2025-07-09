@@ -7,7 +7,7 @@ const Optimizer = () => {
     const [tickerGroup, setTickerGroup] = useState('SP500');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [riskFreeRate, setRiskFreeRate] = useState('0.02');
+    const [riskFreeRate, setRiskFreeRate] = useState('2');
     const [targetReturn, setTargetReturn] = useState('');
     const [riskTolerance, setRiskTolerance] = useState('');
     const [optimizedPortfolio, setOptimizedPortfolio] = useState(null);
@@ -25,9 +25,9 @@ const Optimizer = () => {
                 ticker_group: tickerGroup,
                 start_date: startDate,
                 end_date: endDate,
-                risk_free_rate: parseFloat(riskFreeRate),
-                target_return: targetReturn ? parseFloat(targetReturn) : null,
-                risk_tolerance: riskTolerance ? parseFloat(riskTolerance) : null,
+                risk_free_rate: parseFloat(riskFreeRate) / 100,
+                target_return: targetReturn ? parseFloat(targetReturn) / 100 : null,
+                risk_tolerance: riskTolerance ? parseFloat(riskTolerance) / 100 : null,
             });
             setOptimizedPortfolio(response.data);
         } catch (err) {
@@ -56,17 +56,23 @@ const Optimizer = () => {
                         <label>{t('optimizer.endDate')}</label>
                         <input className="optimizer-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
                     </div>
-                    <div className="optimizer-form-group">
+                                        <div className="optimizer-form-group">
                         <label>{t('optimizer.riskFreeRate')}</label>
-                        <input className="optimizer-input" type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="e.g., 0.02" required />
+                        <div class="input-with-symbol">
+                            <input className="optimizer-input" type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="e.g., 2" required />
+                        </div>
                     </div>
                     <div className="optimizer-form-group">
                         <label>{t('optimizer.targetReturn')}</label>
-                        <input className="optimizer-input" type="number" value={targetReturn} onChange={(e) => setTargetReturn(e.target.value)} placeholder="e.g., 0.20" />
+                        <div class="input-with-symbol">
+                            <input className="optimizer-input" type="number" value={targetReturn} onChange={(e) => setTargetReturn(e.target.value)} placeholder="e.g., 20" />
+                        </div>
                     </div>
                     <div className="optimizer-form-group">
                         <label>{t('optimizer.riskTolerance')}</label>
-                        <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 0.15" />
+                        <div class="input-with-symbol">
+                            <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 15" />
+                        </div>
                     </div>
                     <button type="submit" className="optimizer-submit-button" disabled={loading}>
                         {loading ? t('common.loading') : t('optimizer.submit')}
