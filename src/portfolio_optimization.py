@@ -68,10 +68,20 @@ def optimize_portfolio(ticker_group, start_date, end_date, risk_free_rate, targe
     # Filter out assets with near-zero weight
     final_weights = {ticker: weight for ticker, weight in zip(tickers, optimized_weights) if weight > 1e-4}
 
+    # Get the latest prices for the tickers in the final portfolio
+    latest_prices = {}
+    if final_weights:
+        final_tickers = list(final_weights.keys())
+        price_data = yf.download(final_tickers, period='1d')['Close']
+        if not price_data.empty:
+            for ticker in final_tickers:
+                if ticker in price_data:
+                    latest_prices[ticker] = price_data[ticker].iloc[-1]
 
     return {
         "weights": final_weights,
         "return": optimized_return,
         "risk": optimized_std_dev,
-        "sharpe_ratio": optimized_sharpe_ratio
+        "sharpe_ratio": optimized_sharpe_ratio,
+        "prices": latest_prices
     }
