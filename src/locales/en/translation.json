@@ -93,6 +93,14 @@
     "weights": "Weights",
     "return": "Expected Return",
     "risk": "Risk (Std. Dev)",
-    "sharpeRatio": "Sharpe Ratio"
+    "sharpeRatio": "Sharpe Ratio",
+    "investmentAllocation": "Investment Allocation",
+    "investmentBudget": "Investment Budget",
+    "enterBudget": "Enter budget amount",
+    "calculate": "Calculate",
+    "allocationResults": "Allocation Results",
+    "ticker": "Ticker",
+    "investmentAmount": "Investment Amount",
+    "shares": "Shares"
   }
 }
