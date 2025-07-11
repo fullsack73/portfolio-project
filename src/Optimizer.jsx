@@ -75,19 +75,19 @@ const Optimizer = () => {
                     </div>
                                         <div className="optimizer-form-group">
                         <label>{t('optimizer.riskFreeRate')}</label>
-                        <div class="input-with-symbol">
+                        <div className="input-with-symbol">
                             <input className="optimizer-input" type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="e.g., 2" required />
                         </div>
                     </div>
                     <div className="optimizer-form-group">
                         <label>{t('optimizer.targetReturn')}</label>
-                        <div class="input-with-symbol">
+                        <div className="input-with-symbol">
                             <input className="optimizer-input" type="number" value={targetReturn} onChange={(e) => setTargetReturn(e.target.value)} placeholder="e.g., 20" />
                         </div>
                     </div>
                     <div className="optimizer-form-group">
                         <label>{t('optimizer.riskTolerance')}</label>
-                        <div class="input-with-symbol">
+                        <div className="input-with-symbol">
                             <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 15" />
                         </div>
                     </div>
@@ -160,13 +160,15 @@ const Optimizer = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {allocation.map(({ ticker, amount, shares }) => (
-                                            <tr key={ticker}>
-                                                <td>{ticker}</td>
-                                                <td>${amount.toFixed(2)}</td>
-                                                <td>{shares.toFixed(4)}</td>
-                                            </tr>
-                                        ))}
+                                        {allocation
+                                            .filter(({ ticker }) => optimizedPortfolio.weights[ticker] > 0.0001)
+                                            .map(({ ticker, amount, shares }) => (
+                                                <tr key={ticker}>
+                                                    <td>{ticker}</td>
+                                                    <td>${amount.toFixed(2)}</td>
+                                                    <td>{shares.toFixed(4)}</td>
+                                                </tr>
+                                            ))}
                                     </tbody>
                                 </table>
                             </div>
