@@ -1,25 +1,26 @@
 import pandas as pd
 
 def get_sp500_tickers():
-    """Gets the list of S&P 500 tickers from Wikipedia."""
+    """Gets the list of S&P 500 tickers from snp.csv."""
     try:
-        # Wikipedia page with the list of S&P 500 companies
-        url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
-        # Read the HTML table into a pandas DataFrame
-        tables = pd.read_html(url)
-        sp500_table = tables[0]
-        # The tickers are in the 'Symbol' column
-        tickers = sp500_table['Symbol'].tolist()
-        # Some tickers on Wikipedia might be in the format 'BF.B', but yfinance expects 'BF-B'
-        tickers = [ticker.replace('.', '-') for ticker in tickers]
-        return tickers
+        df = pd.read_csv('snp.csv')
+        return df['Symbol'].tolist()
     except Exception as e:
         print(f"Error fetching S&P 500 tickers: {e}")
-        # Return a smaller, hardcoded list as a fallback
-        return ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'JPM', 'V', 'JNJ', 'WMT', 'PG']
+        return []
+
+def get_dow_tickers():
+    """Gets the list of Dow Jones tickers from dow.csv."""
+    try:
+        df = pd.read_csv('dow.csv')
+        return df['Symbol'].tolist()
+    except Exception as e:
+        print(f"Error fetching Dow Jones tickers: {e}")
+        return []
 
 TICKER_GROUPS = {
-    "SP500": get_sp500_tickers
+    "SP500": get_sp500_tickers,
+    "DOW": get_dow_tickers
 }
 
 def get_ticker_group(group_name):

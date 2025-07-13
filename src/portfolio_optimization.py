@@ -19,12 +19,17 @@ def negative_sharpe_ratio(weights, mean_returns, cov_matrix, risk_free_rate):
     p_returns, p_std_dev = calculate_portfolio_performance(weights, mean_returns, cov_matrix)
     return -(p_returns - risk_free_rate) / p_std_dev
 
-def optimize_portfolio(ticker_group, start_date, end_date, risk_free_rate, target_return=None, risk_tolerance=None):
+def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
     """
     Optimize portfolio based on user preferences.
     """
-    # Get tickers from the selected group
-    tickers = get_ticker_group(ticker_group)
+    # Get tickers from the selected group or use the provided list
+    if tickers:
+        pass
+    elif ticker_group:
+        tickers = get_ticker_group(ticker_group)
+    else:
+        raise ValueError("Either ticker_group or tickers must be provided.")
 
     # Fetch data
     data = get_stock_data(tickers, start_date, end_date)

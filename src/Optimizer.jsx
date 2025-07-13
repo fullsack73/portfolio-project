@@ -15,6 +15,20 @@ const Optimizer = () => {
     const [error, setError] = useState(null);
     const [investmentAmount, setInvestmentAmount] = useState('');
     const [allocation, setAllocation] = useState(null);
+    const [customTickers, setCustomTickers] = useState([]);
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const text = event.target.result;
+                const tickers = text.split('\n').map(t => t.trim()).filter(t => t);
+                setCustomTickers(tickers);
+            };
+            reader.readAsText(file);
+        }
+    };
 
     const handleAllocation = () => {
         if (!investmentAmount || !optimizedPortfolio || !optimizedPortfolio.weights) return;
@@ -38,14 +52,21 @@ const Optimizer = () => {
         setOptimizedPortfolio(null);
 
         try {
-            const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', {
-                ticker_group: tickerGroup,
+            const payload = {
                 start_date: startDate,
                 end_date: endDate,
                 risk_free_rate: parseFloat(riskFreeRate) / 100,
                 target_return: targetReturn ? parseFloat(targetReturn) / 100 : null,
                 risk_tolerance: riskTolerance ? parseFloat(riskTolerance) / 100 : null,
-            });
+            };
+
+            if (tickerGroup === 'CUSTOM') {
+                payload.tickers = customTickers;
+            } else {
+                payload.ticker_group = tickerGroup;
+            }
+
+            const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', payload);
             setOptimizedPortfolio(response.data);
         } catch (err) {
             setError(err.response ? err.response.data.error : 'An error occurred');
@@ -62,8 +83,12 @@ const Optimizer = () => {
                         <label>{t('optimizer.tickerGroup')}</label>
                         <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)} required>
                             <option value="SP500">S&P 500</option>
-                            {/* Add other ticker groups here */}
+                            <option value="DOW">Dow Jones</option>
+                            <option value="CUSTOM">Custom</option>
                         </select>
+                        {tickerGroup === 'CUSTOM' && (
+                            <input type="file" accept=".csv" onChange={handleFileUpload} />
+                        )}
                     </div>
                     <div className="optimizer-form-group">
                         <label>{t('optimizer.startDate')}</label>

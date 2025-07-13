@@ -35,7 +35,6 @@ function AppContent() {
 
   const fetchData = (startDate = null, endDate = null, stockTicker = ticker) => {
     setLoading(true);
-    // if this fails despite having right proxy settings, i'm fucked. but it should never fail
     let url = `/api/get-data?ticker=${stockTicker}&regression=true&future_days=${futureDays}`;
     if (startDate && endDate) {
       url += `&start_date=${startDate}&end_date=${endDate}`;

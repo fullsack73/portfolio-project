@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import numpy as np
-import yfinance as yf # make sure to update the yf library to prevent interpreter from bitching
+import yfinance as yf
 from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
 from hedge_analysis import analyze_hedge_relationship
@@ -15,11 +15,10 @@ from ticker_lists import get_ticker_group
 
 app = Flask(__name__)
 
-# don't touch the settings in CORS(). JUST DON'T. it took me fucking ages to get it working
 CORS(app, 
      resources={
          "/*": {
-             "origins": ["http://localhost:5173", "http://127.0.0.1:*", "https://gannet-included-jolly.ngrok-free.app","http://127.0.0.1:63200"],
+             "origins": ["http://localhost:5173", "http://127.0.0.1:*"],
              "methods": ["GET", "POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization", "Accept"],
              "supports_credentials": True,
@@ -293,6 +292,7 @@ def optimize_portfolio_endpoint():
     data = request.get_json()
     
     ticker_group = data.get('ticker_group')
+    tickers = data.get('tickers')
     start_date = data.get('start_date')
     end_date = data.get('end_date')
     risk_free_rate = data.get('risk_free_rate')
@@ -300,8 +300,15 @@ def optimize_portfolio_endpoint():
     risk_tolerance = data.get('risk_tolerance')
     
     try:
-        # The ticker group is validated within the optimize_portfolio function
-        optimized_portfolio = optimize_portfolio(ticker_group, start_date, end_date, risk_free_rate, target_return, risk_tolerance)
+        optimized_portfolio = optimize_portfolio(
+            start_date=start_date, 
+            end_date=end_date, 
+            risk_free_rate=risk_free_rate, 
+            ticker_group=ticker_group, 
+            tickers=tickers, 
+            target_return=target_return, 
+            risk_tolerance=risk_tolerance
+        )
         return jsonify(optimized_portfolio)
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 400
