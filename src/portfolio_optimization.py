@@ -1,6 +1,6 @@
 import numpy as np
 import yfinance as yf
-from scipy.optimize import minimize
+from pypfopt import EfficientFrontier, risk_models, expected_returns
 from ticker_lists import get_ticker_group
 
 def get_stock_data(tickers, start_date, end_date):
@@ -8,20 +8,9 @@ def get_stock_data(tickers, start_date, end_date):
     data = yf.download(tickers, start=start_date, end=end_date)['Close']
     return data
 
-def calculate_portfolio_performance(weights, mean_returns, cov_matrix):
-    """Calculate portfolio performance metrics."""
-    returns = np.sum(mean_returns * weights) * 252
-    std_dev = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights))) * np.sqrt(252)
-    return returns, std_dev
-
-def negative_sharpe_ratio(weights, mean_returns, cov_matrix, risk_free_rate):
-    """Calculate the negative Sharpe ratio for optimization."""
-    p_returns, p_std_dev = calculate_portfolio_performance(weights, mean_returns, cov_matrix)
-    return -(p_returns - risk_free_rate) / p_std_dev
-
 def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
     """
-    Optimize portfolio based on user preferences.
+    Optimize portfolio based on user preferences using PyPortfolioOpt.
     """
     # Get tickers from the selected group or use the provided list
     if tickers:
@@ -33,45 +22,35 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
 
     # Fetch data
     data = get_stock_data(tickers, start_date, end_date)
-    # Drop columns with all NaN values (e.g., stocks with no data in the given range)
     data = data.dropna(axis=1, how='all')
     tickers = data.columns.tolist()
-    
-    mean_returns = data.pct_change().mean()
-    cov_matrix = data.pct_change().cov()
-    num_assets = len(tickers)
 
-    # Constraints
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    # Calculate expected returns and sample covariance
+    mu = expected_returns.mean_historical_return(data)
+    S = risk_models.sample_cov(data)
+
+    # Initialize Efficient Frontier
+    ef = EfficientFrontier(mu, S)
+
+    # Set optimization objective
     if target_return:
-        constraints = (
-            {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},
-            {'type': 'eq', 'fun': lambda x: calculate_portfolio_performance(x, mean_returns, cov_matrix)[0] - target_return}
-        )
+        ef.efficient_return(target_return)
+    elif risk_tolerance:
+        ef.efficient_risk(risk_tolerance)
+    else:
+        ef.max_sharpe()
+
+    # Get optimized weights
+    weights = ef.clean_weights()
     
-    if risk_tolerance:
-        constraints = (
-            {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},
-            {'type': 'ineq', 'fun': lambda x: risk_tolerance - calculate_portfolio_performance(x, mean_returns, cov_matrix)[1]}
-        )
-
-    # Bounds
-    bounds = tuple((0, 1) for _ in range(num_assets))
-
-    # Initial guess
-    initial_weights = np.array(num_assets * [1. / num_assets])
-
-    # Optimization
-    result = minimize(negative_sharpe_ratio, initial_weights, args=(mean_returns, cov_matrix, risk_free_rate),
-                        method='SLSQP', bounds=bounds, constraints=constraints)
-
-    # Optimized portfolio
-    optimized_weights = result.x
-    optimized_return, optimized_std_dev = calculate_portfolio_performance(optimized_weights, mean_returns, cov_matrix)
-    optimized_sharpe_ratio = (optimized_return - risk_free_rate) / optimized_std_dev
-
     # Filter out assets with near-zero weight
-    final_weights = {ticker: weight for ticker, weight in zip(tickers, optimized_weights) if weight > 1e-4}
+    final_weights = {ticker: weight for ticker, weight in weights.items() if weight > 1e-4}
+
+    # Get performance metrics
+    performance = ef.portfolio_performance(risk_free_rate=risk_free_rate)
+    optimized_return = performance[0]
+    optimized_std_dev = performance[1]
+    optimized_sharpe_ratio = performance[2]
 
     # Get the latest prices for the tickers in the final portfolio
     latest_prices = {}
@@ -81,7 +60,12 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
         if not price_data.empty:
             for ticker in final_tickers:
                 if ticker in price_data:
-                    latest_prices[ticker] = price_data[ticker].iloc[-1]
+                    # Ensure we get a single price, even if only one ticker is requested
+                    if len(final_tickers) == 1:
+                        latest_prices[ticker] = price_data.iloc[-1]
+                    else:
+                        latest_prices[ticker] = price_data[ticker].iloc[-1]
+
 
     return {
         "weights": final_weights,

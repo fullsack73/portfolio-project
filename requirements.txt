@@ -5,3 +5,4 @@ yfinance
 scikit-learn
 lightgbm
 pandas
+PyPortfolioOpt
