@@ -101,6 +101,7 @@
     "allocationResults": "Allocation Results",
     "ticker": "Ticker",
     "investmentAmount": "Investment Amount",
-    "shares": "Shares"
+    "shares": "Shares",
+    "useMLForecast": "Use ML Forecast"
   }
 }

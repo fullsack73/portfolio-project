@@ -55,7 +55,7 @@ The server exposes several endpoints, each mapped to a specific function:
 -   `GET /analyze-hedge`: Analyzes the hedge relationship between two tickers.
 -   `GET /portfolio-metrics`: Calculates portfolio metrics using a Monte Carlo simulation.
 -   `GET /financial-statement`: Retrieves key financial ratios for a single ticker.
--   `POST /api/optimize-portfolio`: Runs advanced portfolio optimization based on various constraints.
+-   `POST /api/optimize-portfolio`: Runs advanced portfolio optimization. Accepts an optional flag to enable ML-based return forecasting.
 
 ### 3.3. Modular Business Logic
 
@@ -64,7 +64,7 @@ The core business logic is decoupled from the API routes and organized into sepa
 -   **`hedge_analysis.py`**: Contains the logic for calculating correlation and determining hedge relationships.
 -   **`montecarlo.py`**: Implements the Monte Carlo simulation for basic portfolio optimization.
 -   **`financial_statement.py`**: Handles fetching and calculating financial ratios.
--   **`portfolio_optimization.py`**: Implements the advanced portfolio optimization using the `PyPortfolioOpt` library.
+-   **`portfolio_optimization.py`**: Implements advanced portfolio optimization using `PyPortfolioOpt`. It also contains the logic to forecast expected returns using a time-series model (e.g., Prophet) when the ML feature is enabled.
 -   **`ticker_lists.py`**: Provides utility functions to get lists of tickers for major indices (S&P 500, Dow Jones) from local CSV files.
 
 This modularity makes the code easier to understand, maintain, and test.
@@ -84,7 +84,7 @@ This modularity makes the code easier to understand, maintain, and test.
 -   **pandas**: For data manipulation and analysis.
 -   **NumPy**: For numerical operations, especially in financial calculations.
 -g   **SciPy**: For scientific and technical computing, used here for optimization.
--   **LightGBM / scikit-learn**: For machine learning (regression model).
+-   **LightGBM / scikit-learn / Prophet**: For machine learning models (regression, time-series forecasting).
 -   **PyPortfolioOpt**: For advanced portfolio optimization and analysis.
 
 ## 5. Data Flow Example (Stock Analysis)

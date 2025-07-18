@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
 import yfinance as yf
 from pypfopt import EfficientFrontier, risk_models, expected_returns
+from prophet import Prophet
 from ticker_lists import get_ticker_group
 
 def get_stock_data(tickers, start_date, end_date):
@@ -8,7 +10,30 @@ def get_stock_data(tickers, start_date, end_date):
     data = yf.download(tickers, start=start_date, end=end_date)['Close']
     return data
 
-def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
+def forecast_returns(data):
+    """Forecast expected returns using Prophet."""
+    forecasts = {}
+    for ticker in data.columns:
+        # Prepare data for Prophet
+        df_prophet = data[[ticker]].reset_index()
+        df_prophet.columns = ['ds', 'y']
+
+        # Initialize and fit the model
+        model = Prophet()
+        model.fit(df_prophet)
+
+        # Make future dataframe
+        future = model.make_future_dataframe(periods=365) # Forecast one year ahead
+        forecast = model.predict(future)
+
+        # Calculate expected return from the forecast
+        # Using the mean of the forecasted returns as the expected return
+        expected_return = (forecast['yhat'].iloc[-1] / forecast['yhat'].iloc[-365]) - 1
+        forecasts[ticker] = expected_return
+
+    return pd.Series(forecasts)
+
+def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None, use_ml_forecast=False):
     """
     Optimize portfolio based on user preferences using PyPortfolioOpt.
     """
@@ -26,7 +51,10 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     tickers = data.columns.tolist()
 
     # Calculate expected returns and sample covariance
-    mu = expected_returns.mean_historical_return(data)
+    if use_ml_forecast:
+        mu = forecast_returns(data)
+    else:
+        mu = expected_returns.mean_historical_return(data)
     S = risk_models.sample_cov(data)
 
     # Initialize Efficient Frontier
