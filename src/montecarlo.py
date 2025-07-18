@@ -49,7 +49,7 @@ def calculate_portfolio_metrics(tickers=None, start_date=None, end_date=None, ri
         start_date, end_date = validate_date_range(start_date, end_date)
     
     # fetch data using yfinance
-    data = yf.download(tickers, start=start_date, end=end_date)
+    data = yf.download(tickers, start=start_date, end=end_date, auto_adjust=True)
     
     # use 'Adj Close' if available, otherwise fallback to 'Close'
     if 'Adj Close' in data.columns:

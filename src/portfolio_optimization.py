@@ -37,7 +37,7 @@ def get_stock_data(tickers, start_date, end_date):
     for ticker in tickers:
         try:
             logger.info(f"Fetching data for {ticker}...")
-            data = yf.download(ticker, start=start_date, end=end_date, progress=False)['Close']
+            data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)['Close']
             if data.empty:
                 logger.warning(f"No data found for {ticker}, skipping.")
                 continue
@@ -116,8 +116,11 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
 
     # Calculate expected returns using ML forecast and sample covariance
     mu = forecast_returns(data)
-    # Use CovarianceShrinkage to calculate a more robust covariance matrix
-    S = risk_models.CovarianceShrinkage(data).ledoit_wolf()
+    # Filter the historical data to align with the tickers that have a forecast
+    aligned_data = data[mu.index]
+
+    # Calculate covariance matrix on the aligned data
+    S = risk_models.CovarianceShrinkage(aligned_data).ledoit_wolf()
 
     # Initialize Efficient Frontier
     ef = EfficientFrontier(mu, S)
@@ -146,7 +149,7 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     latest_prices = {}
     if final_weights:
         final_tickers = list(final_weights.keys())
-        price_data = yf.download(final_tickers, period='1d')['Close']
+        price_data = yf.download(final_tickers, period='1d', auto_adjust=True)['Close']
         if not price_data.empty:
             for ticker in final_tickers:
                 if ticker in price_data:

@@ -84,3 +84,9 @@ This file outlines the tasks completed during the development of the portfolio a
 
 ## `NameError` Hotfix
 - [x] **Backend:** Add missing `NullHandler` import to `portfolio_optimization.py`.
+
+## Suppress `yfinance` Warning
+- [x] **Backend:** Add `auto_adjust=True` to all `yf.download` calls to silence the `FutureWarning`.
+
+## Fix Data Alignment Error
+- [x] **Backend:** Synchronize tickers between the expected returns and covariance matrix to fix the `ValueError`.
