@@ -101,7 +101,6 @@
     "allocationResults": "배분 결과",
     "ticker": "티커",
     "investmentAmount": "투자 금액",
-    "shares": "주식 수",
-    "useMLForecast": "머신러닝 예측 사용"
+    "shares": "주식 수"
   }
 }

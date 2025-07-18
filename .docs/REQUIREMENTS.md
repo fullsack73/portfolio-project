@@ -69,7 +69,7 @@ The application is a comprehensive financial analysis tool that provides the fol
   - Users can select a predefined group of tickers (S&P 500, Dow Jones) or upload a custom list from a CSV file.
   - Users must specify a start date, end date, and a risk-free rate.
   - Users can optionally provide a target annual return or a target annual volatility (risk tolerance). If neither is provided, the optimizer defaults to finding the portfolio with the maximum Sharpe ratio.
-  - **ML-Based Forecasting:** Users can enable a machine learning model (e.g., Prophet) to forecast expected returns, which are then used as inputs for the optimization instead of historical mean returns.
+  - **ML-Based Forecasting:** The optimizer uses a machine learning model (Prophet) by default to forecast expected returns, which are then used as inputs for the optimization instead of historical mean returns.
 - **5.2. Optimization & Results:**
   - The backend uses the `PyPortfolioOpt` library to perform the optimization.
   - The UI displays the resulting asset weights, expected return, risk, and Sharpe ratio.

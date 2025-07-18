@@ -51,3 +51,10 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] **Frontend:** Update `handleSubmit` in `Optimizer.jsx` to send the `use_ml_forecast` flag to the backend.
 - [x] **i18n:** Add translations for the new UI element in both English and Korean.
 - [x] **Documentation:** Update `REQUIREMENTS.md` and `DESIGN.md` to reflect the new feature.
+
+## Default ML Portfolio Optimization
+- [x] **Backend:** Modify `portfolio_optimization.py` to use ML forecasting by default.
+- [x] **Backend:** Update the API endpoint in `app.py` to remove the ML-related flag.
+- [x] **Frontend:** Remove the ML forecast checkbox and its state from `Optimizer.jsx`.
+- [x] **i18n:** Remove translations for the obsolete UI element.
+- [x] **Documentation:** Update `REQUIREMENTS.md` and `DESIGN.md` to reflect the new default behavior.

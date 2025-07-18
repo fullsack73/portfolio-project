@@ -298,8 +298,7 @@ def optimize_portfolio_endpoint():
     risk_free_rate = data.get('risk_free_rate')
     target_return = data.get('target_return')
     risk_tolerance = data.get('risk_tolerance')
-    use_ml_forecast = data.get('use_ml_forecast', False)
-    
+
     try:
         optimized_portfolio = optimize_portfolio(
             start_date=start_date, 
@@ -308,8 +307,7 @@ def optimize_portfolio_endpoint():
             ticker_group=ticker_group, 
             tickers=tickers, 
             target_return=target_return, 
-            risk_tolerance=risk_tolerance,
-            use_ml_forecast=use_ml_forecast
+            risk_tolerance=risk_tolerance
         )
         return jsonify(optimized_portfolio)
     except ValueError as ve:

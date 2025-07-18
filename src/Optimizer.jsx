@@ -16,7 +16,6 @@ const Optimizer = () => {
     const [investmentAmount, setInvestmentAmount] = useState('');
     const [allocation, setAllocation] = useState(null);
     const [customTickers, setCustomTickers] = useState([]);
-    const [useMLForecast, setUseMLForecast] = useState(false);
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -59,7 +58,6 @@ const Optimizer = () => {
                 risk_free_rate: parseFloat(riskFreeRate) / 100,
                 target_return: targetReturn ? parseFloat(targetReturn) / 100 : null,
                 risk_tolerance: riskTolerance ? parseFloat(riskTolerance) / 100 : null,
-                use_ml_forecast: useMLForecast,
             };
 
             if (tickerGroup === 'CUSTOM') {
@@ -117,15 +115,6 @@ const Optimizer = () => {
                         <div className="input-with-symbol">
                             <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 15" />
                         </div>
-                    </div>
-                    <div className="optimizer-form-group optimizer-form-group-checkbox">
-                        <input 
-                            type="checkbox" 
-                            id="use-ml-forecast"
-                            checked={useMLForecast} 
-                            onChange={(e) => setUseMLForecast(e.target.checked)} 
-                        />
-                        <label htmlFor="use-ml-forecast">{t('optimizer.useMLForecast')}</label>
                     </div>
                     <button type="submit" className="optimizer-submit-button" disabled={loading}>
                         {loading ? t('common.loading') : t('optimizer.submit')}

@@ -33,7 +33,7 @@ def forecast_returns(data):
 
     return pd.Series(forecasts)
 
-def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None, use_ml_forecast=False):
+def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
     """
     Optimize portfolio based on user preferences using PyPortfolioOpt.
     """
@@ -50,11 +50,8 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     data = data.dropna(axis=1, how='all')
     tickers = data.columns.tolist()
 
-    # Calculate expected returns and sample covariance
-    if use_ml_forecast:
-        mu = forecast_returns(data)
-    else:
-        mu = expected_returns.mean_historical_return(data)
+    # Calculate expected returns using ML forecast and sample covariance
+    mu = forecast_returns(data)
     S = risk_models.sample_cov(data)
 
     # Initialize Efficient Frontier
