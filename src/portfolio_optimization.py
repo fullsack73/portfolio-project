@@ -1,35 +1,99 @@
+import logging
+from logging import NullHandler
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from pypfopt import EfficientFrontier, risk_models, expected_returns
+from pypfopt import EfficientFrontier, risk_models
 from prophet import Prophet
 from ticker_lists import get_ticker_group
+import cmdstanpy
+
+# Define a dummy function to suppress logging
+def silent_logger(*args, **kwargs):
+    pass
+
+# Monkey-patch the logger to silence it
+cmdstanpy.utils.get_logger = silent_logger
+
+# Configure logging for this module
+logger = logging.getLogger(__name__)
+
+# Suppress verbose logs from Prophet and its backend
+logging.getLogger('prophet').setLevel(logging.WARNING)
+logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
+# Forcing prophet logs to be silent by adding a null handler
+prophet_logger = logging.getLogger('prophet')
+prophet_logger.addHandler(NullHandler())
+prophet_logger.propagate = False
+
+def sanitize_tickers(tickers):
+    """Sanitize ticker symbols for yfinance compatibility (e.g., BRK.B -> BRK-B)."""
+    return [ticker.replace('.', '-') for ticker in tickers]
 
 def get_stock_data(tickers, start_date, end_date):
-    """Fetch historical stock data from Yahoo Finance."""
-    data = yf.download(tickers, start=start_date, end=end_date)['Close']
-    return data
+    """Fetch historical stock data from Yahoo Finance, skipping any tickers that fail."""
+    tickers = sanitize_tickers(tickers)
+    all_data = []
+    for ticker in tickers:
+        try:
+            logger.info(f"Fetching data for {ticker}...")
+            data = yf.download(ticker, start=start_date, end=end_date, progress=False)['Close']
+            if data.empty:
+                logger.warning(f"No data found for {ticker}, skipping.")
+                continue
+            data.name = ticker
+            all_data.append(data)
+        except Exception as e:
+            logger.error(f"Could not download data for {ticker}: {e}. Skipping.")
+
+    if not all_data:
+        return pd.DataFrame()
+
+    # Combine all successful downloads into a single DataFrame
+    if not all_data:
+        return pd.DataFrame()
+
+    combined_data = pd.concat(all_data, axis=1)
+
+    # Fill missing values to create a clean, consistent dataset
+    # Forward-fill handles weekends/holidays, back-fill handles missing data at the start
+    filled_data = combined_data.ffill().bfill()
+    return filled_data.dropna(axis=1, how='all')  # Drop any columns that are still all NaN
 
 def forecast_returns(data):
     """Forecast expected returns using Prophet."""
+    logger.info(f"Starting return forecasting for tickers: {', '.join(data.columns)}")
     forecasts = {}
     for ticker in data.columns:
-        # Prepare data for Prophet
-        df_prophet = data[[ticker]].reset_index()
-        df_prophet.columns = ['ds', 'y']
+        try:
+            # Prepare data for Prophet
+            df_prophet = data[[ticker]].reset_index()
+            df_prophet.columns = ['ds', 'y']
 
-        # Initialize and fit the model
-        model = Prophet()
-        model.fit(df_prophet)
+            # Skip if data is empty or insufficient
+            if df_prophet.shape[0] < 2:
+                logger.warning(f"Skipping forecast for {ticker}: insufficient data.")
+                forecasts[ticker] = 0
+                continue
 
-        # Make future dataframe
-        future = model.make_future_dataframe(periods=365) # Forecast one year ahead
-        forecast = model.predict(future)
+            # Initialize and fit the model
+            model = Prophet()
+            model.fit(df_prophet)
 
-        # Calculate expected return from the forecast
-        # Using the mean of the forecasted returns as the expected return
-        expected_return = (forecast['yhat'].iloc[-1] / forecast['yhat'].iloc[-365]) - 1
-        forecasts[ticker] = expected_return
+            # Make future dataframe
+            future = model.make_future_dataframe(periods=365)  # Forecast one year ahead
+            forecast = model.predict(future)
+
+            # Calculate expected return from the forecast
+            # Using the mean of the forecasted returns as the expected return
+            expected_return = (forecast['yhat'].iloc[-1] / forecast['yhat'].iloc[-365]) - 1
+            forecasts[ticker] = expected_return
+            logger.info(f"Successfully forecasted returns for {ticker}.")
+
+        except Exception as e:
+            logger.error(f"Failed to forecast returns for {ticker}: {e}")
+            # Fallback to a neutral return (0) if forecasting fails
+            forecasts[ticker] = 0
 
     return pd.Series(forecasts)
 
@@ -52,7 +116,8 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
 
     # Calculate expected returns using ML forecast and sample covariance
     mu = forecast_returns(data)
-    S = risk_models.sample_cov(data)
+    # Use CovarianceShrinkage to calculate a more robust covariance matrix
+    S = risk_models.CovarianceShrinkage(data).ledoit_wolf()
 
     # Initialize Efficient Frontier
     ef = EfficientFrontier(mu, S)

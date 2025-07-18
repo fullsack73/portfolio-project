@@ -58,3 +58,29 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] **Frontend:** Remove the ML forecast checkbox and its state from `Optimizer.jsx`.
 - [x] **i18n:** Remove translations for the obsolete UI element.
 - [x] **Documentation:** Update `REQUIREMENTS.md` and `DESIGN.md` to reflect the new default behavior.
+
+## Debugging Prophet Integration
+- [x] **Logging:** Suppress verbose informational logs from `cmdstanpy` to improve debugging clarity.
+- [x] **Backend:** Add enhanced error handling and logging within the `forecast_returns` function to catch potential failures.
+- [x] **Backend:** Log the input data passed to the forecast function to ensure data integrity.
+- [x] **Documentation:** Update `DESIGN.md` to document the new logging and error handling strategy.
+
+## Robust Data Handling and Logging
+- [x] **Logging:** Implement a more effective method to suppress `prophet` and `cmdstanpy` logs.
+- [x] **Backend:** Refactor `get_stock_data` to fetch data per-ticker to handle individual download failures gracefully.
+- [x] **Backend:** Add logging to report which tickers are skipped due to download errors.
+- [x] **Documentation:** Update `DESIGN.md` to document the resilient data fetching mechanism.
+
+## Final Data & Log Handling
+- [x] **Backend:** Implement intelligent data filling (`ffill`, `bfill`) in `get_stock_data` to create a robust, complete dataset and prevent covariance errors.
+- [x] **Backend:** Forcefully suppress `cmdstanpy` logs via monkey-patching its internal logging function.
+- [x] **Documentation:** Update `DESIGN.md` to document the new data filling strategy and log suppression method.
+
+## Advanced Data & Log Handling
+- [x] **Backend:** Implement a ticker sanitization function to fix common `yfinance` symbol issues (e.g., `BRK.B` -> `BRK-B`).
+- [x] **Backend:** Forcefully suppress `cmdstanpy` logs by redirecting `stdout`/`stderr` during model fitting.
+- [x] **Backend:** Switch to `CovarianceShrinkage` risk model in `PyPortfolioOpt` for more robust calculations.
+- [x] **Documentation:** Update `DESIGN.md` to reflect the new ticker sanitization and robust risk model.
+
+## `NameError` Hotfix
+- [x] **Backend:** Add missing `NullHandler` import to `portfolio_optimization.py`.

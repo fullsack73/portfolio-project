@@ -67,7 +67,18 @@ The core business logic is decoupled from the API routes and organized into sepa
 -   **`portfolio_optimization.py`**: Implements advanced portfolio optimization using `PyPortfolioOpt`. It uses a time-series model (Prophet) by default to forecast expected returns.
 -   **`ticker_lists.py`**: Provides utility functions to get lists of tickers for major indices (S&P 500, Dow Jones) from local CSV files.
 
+-   **Ticker Sanitization**: A `sanitize_tickers` utility function automatically corrects common ticker formatting issues (e.g., converting `BRK.B` to `BRK-B`) to ensure compatibility with the `yfinance` API, fixing the root cause of many download failures.
+-   **Resilient Data Fetching**: The `get_stock_data` function is designed to be robust. It fetches data for each ticker individually and wraps the download call in a `try...except` block. If a ticker fails to download, the error is logged, and the ticker is skipped, allowing the analysis to proceed with the remaining valid assets.
+-   **Robust Risk Model**: The portfolio optimizer uses `CovarianceShrinkage` to calculate the covariance matrix. This method is more numerically stable and robust to datasets with missing or non-overlapping data, preventing errors related to non-positive semidefinite matrices.
+-   **Intelligent Data Filling**: To handle non-overlapping trading days and missing data points, the `get_stock_data` function uses a forward-fill (`ffill`) followed by a backward-fill (`bfill`) strategy. This creates a complete and consistent dataset, which is critical for preventing errors in the covariance matrix calculation.
+-   **Log Suppression via Monkey-Patching**: To definitively suppress verbose logs from third-party libraries (`cmdstanpy`), the application uses monkey-patching to replace the library's internal logger with a silent, dummy function at runtime. This guarantees clean application logs.
+
 This modularity makes the code easier to understand, maintain, and test.
+
+### 3.4. Logging and Error Handling
+
+-   **Logging Configuration**: The backend uses Python's standard `logging` module. Verbose informational logs from third-party libraries like `cmdstanpy` (used by Prophet) are suppressed to keep the application logs clean and focused on key events.
+-   **Error Handling**: Critical functions, such as `forecast_returns`, are wrapped in `try...except` blocks to gracefully handle exceptions. If a forecast for a specific asset fails, the error is logged, and the function provides a neutral fallback value (e.g., 0) to prevent the entire optimization process from failing. This ensures the application remains robust even if data for a single ticker is problematic.
 
 ## 4. Technology Stack
 
