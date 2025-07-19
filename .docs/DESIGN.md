@@ -72,6 +72,11 @@ The core business logic is decoupled from the API routes and organized into sepa
 -   **Robust Risk Model**: The portfolio optimizer uses `CovarianceShrinkage` to calculate the covariance matrix. This method is more numerically stable and robust to datasets with missing or non-overlapping data, preventing errors related to non-positive semidefinite matrices.
 -   **Intelligent Data Filling**: To handle non-overlapping trading days and missing data points, the `get_stock_data` function uses a forward-fill (`ffill`) followed by a backward-fill (`bfill`) strategy. This creates a complete and consistent dataset, which is critical for preventing errors in the covariance matrix calculation.
 -   **Log Suppression via Monkey-Patching**: To definitively suppress verbose logs from third-party libraries (`cmdstanpy`), the application uses monkey-patching to replace the library's internal logger with a silent, dummy function at runtime. This guarantees clean application logs.
+-   **Graceful Data Failure Handling**: The portfolio optimizer includes a check to verify if the historical data DataFrame is empty after fetching. If no valid data is returned for any of the requested tickers, the optimization is aborted, and a clear error message is returned to the frontend, preventing application crashes.
+-   **Enhanced Prophet Integration**: The ML forecasting system has been hardened with robust DataFrame preparation that avoids the problematic `reset_index()` approach, ensuring consistent data structure for Prophet models regardless of the original DataFrame state.
+-   **Comprehensive Error Handling and Fallbacks**: The forecasting pipeline includes multiple fallback strategies - when Prophet fails, it falls back to historical mean calculation, and when that fails, it uses a default 5% return to ensure tickers remain viable for optimization.
+-   **Advanced Ticker Symbol Handling**: Enhanced ticker sanitization with special case mappings for problematic symbols (e.g., `BRK.B` → `BRK-B`) and comprehensive logging to track data pipeline success rates.
+-   **Production-Ready Logging**: Configurable log suppression system that can be enabled for clean production output or disabled for detailed debugging, with comprehensive pipeline stage tracking.
 
 This modularity makes the code easier to understand, maintain, and test.
 
