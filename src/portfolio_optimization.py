@@ -7,6 +7,8 @@ from pypfopt import EfficientFrontier, risk_models
 from prophet import Prophet
 from ticker_lists import get_ticker_group
 import cmdstanpy
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
 
 # Define a dummy function to suppress logging
 # def silent_logger(*args, **kwargs):
@@ -46,8 +48,8 @@ def sanitize_tickers(tickers):
     return sanitized
 
 def get_stock_data(tickers, start_date, end_date):
-    """Fetch stock data for given tickers and date range."""
-    logger.info(f"GET_STOCK_DATA: Starting fetch for {len(tickers)} tickers")
+    """Fetch stock data for given tickers and date range using batch processing."""
+    logger.info(f"GET_STOCK_DATA: Starting BATCH fetch for {len(tickers)} tickers")
     
     # Sanitize tickers first
     original_tickers = tickers.copy()
@@ -56,121 +58,177 @@ def get_stock_data(tickers, start_date, end_date):
     if sanitized_changes:
         logger.info(f"GET_STOCK_DATA: Sanitized {len(sanitized_changes)} ticker symbols")
     
-    all_data = []
-    successful_tickers = []
-    failed_tickers = []
-    
-    for ticker in tickers:
-        try:
-            logger.info(f"GET_STOCK_DATA: Fetching data for {ticker}...")
-            data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)['Close']
-            if data.empty:
-                logger.warning(f"GET_STOCK_DATA: No data found for {ticker}, skipping.")
+    try:
+        # Use batch download for better performance
+        logger.info(f"GET_STOCK_DATA: Performing batch download for {len(tickers)} tickers")
+        batch_data = yf.download(tickers, start=start_date, end=end_date, progress=False, auto_adjust=True)
+        
+        # Handle single ticker case (returns Series instead of DataFrame)
+        if len(tickers) == 1:
+            if 'Close' in batch_data.columns:
+                data = batch_data['Close']
+            else:
+                data = batch_data
+            data.name = tickers[0]
+            final_data = pd.DataFrame(data)
+        else:
+            # Extract Close prices for multiple tickers
+            if 'Close' in batch_data.columns.names:
+                close_data = batch_data['Close']
+            else:
+                close_data = batch_data
+            
+            # Fill missing values to create a clean, consistent dataset
+            filled_data = close_data.ffill().bfill()
+            final_data = filled_data.dropna(axis=1, how='all')  # Drop any columns that are still all NaN
+        
+        successful_tickers = list(final_data.columns)
+        failed_tickers = list(set(tickers) - set(successful_tickers))
+        
+        logger.info(f"GET_STOCK_DATA BATCH SUMMARY: {len(successful_tickers)} successful, {len(failed_tickers)} failed")
+        logger.info(f"GET_STOCK_DATA SUCCESSFUL: {successful_tickers[:10]}{'...' if len(successful_tickers) > 10 else ''}")
+        if failed_tickers:
+            logger.warning(f"GET_STOCK_DATA FAILED: {failed_tickers[:10]}{'...' if len(failed_tickers) > 10 else ''}")
+        
+        logger.info(f"GET_STOCK_DATA FINAL: Returning data with shape {final_data.shape}")
+        return final_data
+        
+    except Exception as e:
+        logger.error(f"GET_STOCK_DATA: Batch download failed: {e}. Falling back to individual downloads.")
+        
+        # Fallback to individual downloads if batch fails
+        all_data = []
+        successful_tickers = []
+        failed_tickers = []
+        
+        for ticker in tickers:
+            try:
+                data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)['Close']
+                if data.empty:
+                    failed_tickers.append(ticker)
+                    continue
+                data.name = ticker
+                all_data.append(data)
+                successful_tickers.append(ticker)
+            except Exception as ticker_error:
+                logger.error(f"GET_STOCK_DATA: Error fetching data for {ticker}: {ticker_error}")
                 failed_tickers.append(ticker)
                 continue
-            data.name = ticker
-            all_data.append(data)
-            successful_tickers.append(ticker)
-            logger.info(f"GET_STOCK_DATA: Successfully fetched {len(data)} data points for {ticker}")
-        except Exception as e:
-            logger.error(f"GET_STOCK_DATA: Error fetching data for {ticker}: {e}")
-            failed_tickers.append(ticker)
-            continue
+        
+        if not all_data:
+            logger.warning("GET_STOCK_DATA: No successful data fetches, returning empty DataFrame")
+            return pd.DataFrame()
+        
+        combined_data = pd.concat(all_data, axis=1)
+        filled_data = combined_data.ffill().bfill()
+        final_data = filled_data.dropna(axis=1, how='all')
+        
+        logger.info(f"GET_STOCK_DATA FALLBACK FINAL: Returning data with shape {final_data.shape}")
+        return final_data
 
-    logger.info(f"GET_STOCK_DATA SUMMARY: {len(successful_tickers)} successful, {len(failed_tickers)} failed")
-    logger.info(f"GET_STOCK_DATA SUCCESSFUL: {successful_tickers[:10]}{'...' if len(successful_tickers) > 10 else ''}")
-    if failed_tickers:
-        logger.warning(f"GET_STOCK_DATA FAILED: {failed_tickers[:10]}{'...' if len(failed_tickers) > 10 else ''}")
+def _forecast_single_ticker(ticker, ticker_data):
+    """Helper function to forecast returns for a single ticker (for parallel processing)."""
+    try:
+        # Create a clean DataFrame for Prophet with explicit column structure
+        df_prophet = pd.DataFrame({
+            'ds': ticker_data.index,
+            'y': ticker_data.values
+        })
+        
+        # Ensure the date column is properly formatted
+        df_prophet['ds'] = pd.to_datetime(df_prophet['ds'])
 
-    if not all_data:
-        logger.warning("GET_STOCK_DATA: No successful data fetches, returning empty DataFrame")
-        return pd.DataFrame()
+        # Skip if data is empty or insufficient
+        if df_prophet.shape[0] < 2:
+            logger.warning(f"Skipping forecast for {ticker}: insufficient data ({df_prophet.shape[0]} data points).")
+            return ticker, 0
+        
+        # Additional data quality check
+        if df_prophet['y'].isna().sum() > len(df_prophet) * 0.5:
+            logger.warning(f"Skipping forecast for {ticker}: too many missing values ({df_prophet['y'].isna().sum()}/{len(df_prophet)}).")
+            # Use simple historical mean as fallback
+            historical_returns = df_prophet['y'].pct_change().dropna()
+            if len(historical_returns) > 0:
+                forecast_value = historical_returns.mean() * 252  # Annualized
+                logger.info(f"Using historical mean fallback for {ticker}: {forecast_value:.4f}")
+                return ticker, forecast_value
+            else:
+                return ticker, 0
 
-    # Combine all successful downloads into a single DataFrame
-    logger.info(f"GET_STOCK_DATA: Combining {len(all_data)} successful data series")
-    combined_data = pd.concat(all_data, axis=1)
-    logger.info(f"GET_STOCK_DATA: Combined data shape before filling: {combined_data.shape}")
+        # Initialize and fit the model with error handling
+        try:
+            model = Prophet(daily_seasonality=False, weekly_seasonality=False, yearly_seasonality=True)
+            model.fit(df_prophet)
+            logger.info(f"Prophet model fitted successfully for {ticker}")
 
-    # Fill missing values to create a clean, consistent dataset
-    # Forward-fill handles weekends/holidays, back-fill handles missing data at the start
-    filled_data = combined_data.ffill().bfill()
-    logger.info(f"GET_STOCK_DATA: Data shape after filling: {filled_data.shape}")
-    
-    final_data = filled_data.dropna(axis=1, how='all')  # Drop any columns that are still all NaN
-    logger.info(f"GET_STOCK_DATA FINAL: Returning data with shape {final_data.shape} and columns {list(final_data.columns)[:10]}{'...' if len(final_data.columns) > 10 else ''}")
-    
-    return final_data
+            # Make future dataframe
+            future = model.make_future_dataframe(periods=365)
+            forecast = model.predict(future)
+
+            # Calculate expected return (annualized)
+            if len(forecast) >= 365:
+                expected_return = (forecast['yhat'].iloc[-1] / forecast['yhat'].iloc[-365]) - 1
+                logger.info(f"Successfully forecasted returns for {ticker}: {expected_return:.4f}")
+                return ticker, expected_return
+            else:
+                logger.warning(f"Insufficient forecast data for {ticker}, using historical mean fallback")
+                raise ValueError("Insufficient forecast data")
+                
+        except Exception as prophet_error:
+            logger.warning(f"Prophet forecasting failed for {ticker}: {prophet_error}. Using historical mean fallback.")
+            # Fallback to historical mean calculation
+            historical_returns = df_prophet['y'].pct_change().dropna()
+            if len(historical_returns) > 0:
+                forecast_value = historical_returns.mean() * 252
+                logger.info(f"Using historical mean fallback for {ticker}: {forecast_value:.4f}")
+                return ticker, forecast_value
+            else:
+                return ticker, 0.05
+
+    except Exception as e:
+        logger.error(f"Critical error processing {ticker}: {e}")
+        return ticker, 0.05
 
 def forecast_returns(data):
-    """Forecast expected returns using Prophet."""
-    logger.info(f"Starting return forecasting for tickers: {', '.join(data.columns)}")
+    """Forecast expected returns using Prophet with parallel processing."""
+    start_time = time.time()
+    logger.info(f"Starting PARALLEL return forecasting for {len(data.columns)} tickers")
+    
+    # Determine optimal number of workers (don't exceed CPU count or ticker count)
+    import os
+    max_workers = min(os.cpu_count() or 4, len(data.columns), 8)  # Cap at 8 to avoid overwhelming the system
+    logger.info(f"Using {max_workers} parallel workers for forecasting")
+    
     forecasts = {}
-    for ticker in data.columns:
-        try:
-            # Prepare data for Prophet with robust column handling
-            df_single_ticker = data[[ticker]].copy()
-            
-            # Create a clean DataFrame for Prophet with explicit column structure
-            df_prophet = pd.DataFrame({
-                'ds': df_single_ticker.index,
-                'y': df_single_ticker[ticker].values
-            })
-            
-            # Ensure the date column is properly formatted
-            df_prophet['ds'] = pd.to_datetime(df_prophet['ds'])
-
-            # Skip if data is empty or insufficient
-            if df_prophet.shape[0] < 2:
-                logger.warning(f"Skipping forecast for {ticker}: insufficient data ({df_prophet.shape[0]} data points).")
-                forecasts[ticker] = 0
-                continue
-            
-            # Additional data quality check
-            if df_prophet['y'].isna().sum() > len(df_prophet) * 0.5:
-                logger.warning(f"Skipping forecast for {ticker}: too many missing values ({df_prophet['y'].isna().sum()}/{len(df_prophet)}).")
-                # Use simple historical mean as fallback
-                historical_returns = df_prophet['y'].pct_change().dropna()
-                if len(historical_returns) > 0:
-                    forecasts[ticker] = historical_returns.mean() * 252  # Annualized
-                    logger.info(f"Using historical mean fallback for {ticker}: {forecasts[ticker]:.4f}")
-                else:
-                    forecasts[ticker] = 0
-                continue
-
-            # Initialize and fit the model with error handling
+    
+    # Use ThreadPoolExecutor for parallel processing
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all forecasting tasks
+        future_to_ticker = {
+            executor.submit(_forecast_single_ticker, ticker, data[ticker]): ticker 
+            for ticker in data.columns
+        }
+        
+        # Collect results as they complete
+        completed_count = 0
+        for future in as_completed(future_to_ticker):
+            ticker = future_to_ticker[future]
             try:
-                model = Prophet(daily_seasonality=False, weekly_seasonality=False, yearly_seasonality=True)
-                model.fit(df_prophet)
-                logger.info(f"Prophet model fitted successfully for {ticker}")
-
-                # Make future dataframe
-                future = model.make_future_dataframe(periods=365)
-                forecast = model.predict(future)
-
-                # Calculate expected return (annualized)
-                if len(forecast) >= 365:
-                    expected_return = (forecast['yhat'].iloc[-1] / forecast['yhat'].iloc[-365]) - 1
-                    forecasts[ticker] = expected_return
-                    logger.info(f"Successfully forecasted returns for {ticker}: {expected_return:.4f}")
-                else:
-                    logger.warning(f"Insufficient forecast data for {ticker}, using historical mean fallback")
-                    raise ValueError("Insufficient forecast data")
+                result_ticker, forecast_value = future.result()
+                forecasts[result_ticker] = forecast_value
+                completed_count += 1
+                
+                # Progress logging
+                if completed_count % 10 == 0 or completed_count == len(data.columns):
+                    logger.info(f"Forecasting progress: {completed_count}/{len(data.columns)} completed")
                     
-            except Exception as prophet_error:
-                logger.warning(f"Prophet forecasting failed for {ticker}: {prophet_error}. Using historical mean fallback.")
-                # Fallback to historical mean calculation
-                historical_returns = df_prophet['y'].pct_change().dropna()
-                if len(historical_returns) > 0:
-                    forecasts[ticker] = historical_returns.mean() * 252
-                    logger.info(f"Using historical mean fallback for {ticker}: {forecasts[ticker]:.4f}")
-                else:
-                    forecasts[ticker] = 0.05
-                    logger.info(f"Using default return for {ticker}: 0.05")
-
-        except Exception as e:
-            logger.error(f"Critical error processing {ticker}: {e}")
-            forecasts[ticker] = 0.05
-
+            except Exception as exc:
+                logger.error(f"Forecasting generated an exception for {ticker}: {exc}")
+                forecasts[ticker] = 0.05  # Default fallback
+    
+    elapsed_time = time.time() - start_time
+    logger.info(f"PARALLEL forecasting completed in {elapsed_time:.2f} seconds for {len(forecasts)} tickers")
+    
     return pd.Series(forecasts)
 
 def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):

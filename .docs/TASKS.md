@@ -116,4 +116,41 @@ This file outlines the tasks completed during the development of the portfolio a
     - [x] **Comprehensive Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to reflect all architectural changes, bug fixes, and new features.
 
 ## Making Portfolio Optimization "Faster"
-- [ ] **Backend:**
+
+### Performance Analysis - Identified Bottlenecks:
+1. **Sequential Prophet Model Training**: Each ticker trains a separate Prophet model sequentially (500+ models for S&P 500)
+2. **Individual yfinance API Calls**: Each ticker fetched individually with network latency
+3. **Redundant Data Processing**: Multiple DataFrame operations per ticker
+4. **Prophet Model Overhead**: Full MCMC sampling for each ticker (overkill for portfolio optimization)
+5. **No Caching**: Repeated computations for same tickers/date ranges
+
+### Optimization Strategies:
+- [x] **Strategy 1: Parallel Processing**
+    - [x] Implement concurrent Prophet model training using ThreadPoolExecutor
+    - [x] Parallelize yfinance data fetching for multiple tickers
+    - [x] Add progress indicators for long-running operations
+- [x] **Strategy 2: Batch Data Fetching**
+    - [x] Use yfinance batch download for multiple tickers in single API call
+    - [x] Implement intelligent batching based on ticker count
+- [ ] **Strategy 3: Lightweight Forecasting**
+    - [ ] Replace Prophet with faster time series models for bulk processing
+    - [ ] Implement simple ARIMA or exponential smoothing as faster alternative
+    - [ ] Use Prophet only for high-priority/individual ticker analysis
+- [ ] **Strategy 4: Smart Caching System**
+    - [ ] Cache historical data downloads by ticker and date range
+    - [ ] Cache Prophet model forecasts with TTL (time-to-live)
+    - [ ] Implement Redis or in-memory caching for frequently accessed data
+- [ ] **Strategy 5: Algorithmic Optimizations**
+    - [ ] Pre-filter tickers based on data quality before expensive forecasting
+    - [ ] Implement early termination for obviously problematic tickers
+    - [ ] Use sampling for very large portfolios (e.g., top 100 from S&P 500)
+
+### Implementation Priority:
+1. **High Impact, Low Effort**: Batch data fetching and parallel processing
+2. **Medium Impact, Medium Effort**: Lightweight forecasting alternatives
+3. **High Impact, High Effort**: Comprehensive caching system
+
+### Performance Targets:
+- **Current**: ~5-10 minutes for S&P 500 optimization
+- **Target**: <30 seconds for S&P 500 optimization
+- **Stretch Goal**: <10 seconds with full caching
