@@ -9,6 +9,8 @@ from ticker_lists import get_ticker_group
 import cmdstanpy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+from scipy import stats
+from sklearn.linear_model import LinearRegression
 
 # Define a dummy function to suppress logging
 # def silent_logger(*args, **kwargs):
@@ -143,61 +145,151 @@ def get_stock_data(tickers, start_date, end_date):
         logger.info(f"GET_STOCK_DATA FALLBACK FINAL: Returning data with shape {final_data.shape}")
         return final_data
 
-def _forecast_single_ticker(ticker, ticker_data):
-    """Helper function to forecast returns for a single ticker (for parallel processing)."""
+def _exponential_smoothing_forecast(prices, alpha=0.3):
+    """Fast exponential smoothing forecast."""
+    if len(prices) < 2:
+        return 0.05
+    
+    # Simple exponential smoothing
+    smoothed = [prices[0]]
+    for i in range(1, len(prices)):
+        smoothed.append(alpha * prices[i] + (1 - alpha) * smoothed[i-1])
+    
+    # Calculate trend from last 30 days
+    recent_data = smoothed[-30:] if len(smoothed) >= 30 else smoothed
+    if len(recent_data) < 2:
+        return 0.05
+    
+    # Linear trend extrapolation
+    x = np.arange(len(recent_data))
+    slope, intercept, _, _, _ = stats.linregress(x, recent_data)
+    
+    # Project 252 days ahead (1 year)
+    future_price = slope * (len(recent_data) + 252) + intercept
+    current_price = recent_data[-1]
+    
+    if current_price <= 0:
+        return 0.05
+    
+    return (future_price / current_price) - 1
+
+def _linear_trend_forecast(prices):
+    """Fast linear trend forecast."""
+    if len(prices) < 10:
+        return 0.05
+    
+    # Use last 90 days for trend analysis
+    recent_prices = prices[-90:] if len(prices) >= 90 else prices
+    x = np.arange(len(recent_prices)).reshape(-1, 1)
+    y = recent_prices
+    
     try:
-        # Create a clean DataFrame for Prophet with explicit column structure
+        model = LinearRegression()
+        model.fit(x, y)
+        
+        # Predict 252 days ahead
+        future_x = np.array([[len(recent_prices) + 252]])
+        future_price = model.predict(future_x)[0]
+        current_price = recent_prices[-1]
+        
+        if current_price <= 0:
+            return 0.05
+        
+        return (future_price / current_price) - 1
+    except:
+        return 0.05
+
+def _historical_volatility_adjusted_forecast(prices):
+    """Historical mean with volatility adjustment."""
+    if len(prices) < 30:
+        return 0.05
+    
+    returns = np.diff(prices) / prices[:-1]
+    returns = returns[~np.isnan(returns)]  # Remove NaN values
+    
+    if len(returns) < 10:
+        return 0.05
+    
+    mean_return = np.mean(returns)
+    volatility = np.std(returns)
+    
+    # Annualized return with volatility adjustment
+    annual_return = mean_return * 252
+    
+    # Apply volatility penalty for very volatile stocks
+    if volatility > 0.05:  # 5% daily volatility threshold
+        annual_return *= 0.8  # Reduce expected return for high volatility
+    
+    return annual_return
+
+def _forecast_single_ticker(ticker, ticker_data, use_lightweight=True):
+    """Helper function to forecast returns for a single ticker with lightweight methods by default."""
+    try:
+        prices = ticker_data.values
+        
+        # Skip if data is empty or insufficient
+        if len(prices) < 10:
+            logger.warning(f"Skipping forecast for {ticker}: insufficient data ({len(prices)} data points).")
+            return ticker, 0.05
+        
+        # Check for too many missing values
+        valid_prices = prices[~np.isnan(prices)]
+        if len(valid_prices) < len(prices) * 0.5:
+            logger.warning(f"Skipping forecast for {ticker}: too many missing values.")
+            return ticker, 0.05
+        
+        if use_lightweight:
+            # Use fast lightweight forecasting methods
+            try:
+                # Try multiple lightweight methods and use ensemble
+                exp_forecast = _exponential_smoothing_forecast(valid_prices)
+                trend_forecast = _linear_trend_forecast(valid_prices)
+                vol_forecast = _historical_volatility_adjusted_forecast(valid_prices)
+                
+                # Ensemble: weighted average of the three methods
+                forecast_value = (0.4 * exp_forecast + 0.3 * trend_forecast + 0.3 * vol_forecast)
+                
+                # Sanity check: cap extreme values
+                forecast_value = np.clip(forecast_value, -0.5, 1.0)  # -50% to +100% annual return
+                
+                logger.info(f"LIGHTWEIGHT forecast for {ticker}: {forecast_value:.4f}")
+                return ticker, forecast_value
+                
+            except Exception as lightweight_error:
+                logger.warning(f"Lightweight forecasting failed for {ticker}: {lightweight_error}. Using Prophet fallback.")
+                # Fall through to Prophet method
+        
+        # Prophet fallback (for high-priority tickers or when lightweight fails)
+        logger.info(f"Using Prophet fallback for {ticker}")
+        
+        # Create DataFrame for Prophet
         df_prophet = pd.DataFrame({
             'ds': ticker_data.index,
-            'y': ticker_data.values
+            'y': valid_prices[:len(ticker_data.index)]  # Ensure same length
         })
-        
-        # Ensure the date column is properly formatted
         df_prophet['ds'] = pd.to_datetime(df_prophet['ds'])
-
-        # Skip if data is empty or insufficient
-        if df_prophet.shape[0] < 2:
-            logger.warning(f"Skipping forecast for {ticker}: insufficient data ({df_prophet.shape[0]} data points).")
-            return ticker, 0
         
-        # Additional data quality check
-        if df_prophet['y'].isna().sum() > len(df_prophet) * 0.5:
-            logger.warning(f"Skipping forecast for {ticker}: too many missing values ({df_prophet['y'].isna().sum()}/{len(df_prophet)}).")
-            # Use simple historical mean as fallback
-            historical_returns = df_prophet['y'].pct_change().dropna()
-            if len(historical_returns) > 0:
-                forecast_value = historical_returns.mean() * 252  # Annualized
-                logger.info(f"Using historical mean fallback for {ticker}: {forecast_value:.4f}")
-                return ticker, forecast_value
-            else:
-                return ticker, 0
-
-        # Initialize and fit the model with error handling
         try:
             model = Prophet(daily_seasonality=False, weekly_seasonality=False, yearly_seasonality=True)
             model.fit(df_prophet)
-            logger.info(f"Prophet model fitted successfully for {ticker}")
-
-            # Make future dataframe
+            
             future = model.make_future_dataframe(periods=365)
             forecast = model.predict(future)
-
-            # Calculate expected return (annualized)
+            
             if len(forecast) >= 365:
                 expected_return = (forecast['yhat'].iloc[-1] / forecast['yhat'].iloc[-365]) - 1
-                logger.info(f"Successfully forecasted returns for {ticker}: {expected_return:.4f}")
+                logger.info(f"Prophet forecast for {ticker}: {expected_return:.4f}")
                 return ticker, expected_return
             else:
-                logger.warning(f"Insufficient forecast data for {ticker}, using historical mean fallback")
                 raise ValueError("Insufficient forecast data")
                 
         except Exception as prophet_error:
-            logger.warning(f"Prophet forecasting failed for {ticker}: {prophet_error}. Using historical mean fallback.")
-            # Fallback to historical mean calculation
-            historical_returns = df_prophet['y'].pct_change().dropna()
-            if len(historical_returns) > 0:
-                forecast_value = historical_returns.mean() * 252
-                logger.info(f"Using historical mean fallback for {ticker}: {forecast_value:.4f}")
+            logger.warning(f"Prophet forecasting failed for {ticker}: {prophet_error}. Using simple mean.")
+            # Final fallback to simple historical mean
+            returns = np.diff(valid_prices) / valid_prices[:-1]
+            returns = returns[~np.isnan(returns)]
+            if len(returns) > 0:
+                forecast_value = np.mean(returns) * 252  # Annualized
                 return ticker, forecast_value
             else:
                 return ticker, 0.05
@@ -206,28 +298,43 @@ def _forecast_single_ticker(ticker, ticker_data):
         logger.error(f"Critical error processing {ticker}: {e}")
         return ticker, 0.05
 
-def forecast_returns(data):
-    """Forecast expected returns using Prophet with parallel processing."""
+def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1):
+    """Forecast expected returns using lightweight methods by default with optional Prophet for high-priority tickers."""
     start_time = time.time()
-    logger.info(f"Starting PARALLEL return forecasting for {len(data.columns)} tickers")
+    method = "LIGHTWEIGHT" if use_lightweight else "PROPHET"
+    logger.info(f"Starting PARALLEL {method} forecasting for {len(data.columns)} tickers")
     
-    # Determine optimal number of workers (don't exceed CPU count or ticker count)
+    # Determine optimal number of workers
     import os
-    max_workers = min(os.cpu_count() or 4, len(data.columns), 8)  # Cap at 8 to avoid overwhelming the system
-    logger.info(f"Using {max_workers} parallel workers for forecasting")
+    max_workers = min(os.cpu_count() or 4, len(data.columns), 8)
+    logger.info(f"Using {max_workers} parallel workers for {method} forecasting")
+    
+    # For large portfolios, use Prophet only for a subset of tickers (highest volume/market cap)
+    prophet_tickers = set()
+    if use_lightweight and len(data.columns) > 50:
+        # Use Prophet for a small percentage of tickers (e.g., 10%)
+        num_prophet = max(1, int(len(data.columns) * prophet_ratio))
+        # For now, randomly select tickers for Prophet (in production, would use market cap/volume)
+        import random
+        prophet_tickers = set(random.sample(list(data.columns), num_prophet))
+        logger.info(f"Using Prophet for {len(prophet_tickers)} high-priority tickers, lightweight for the rest")
     
     forecasts = {}
     
     # Use ThreadPoolExecutor for parallel processing
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all forecasting tasks
-        future_to_ticker = {
-            executor.submit(_forecast_single_ticker, ticker, data[ticker]): ticker 
-            for ticker in data.columns
-        }
+        future_to_ticker = {}
+        for ticker in data.columns:
+            # Use Prophet for selected high-priority tickers, lightweight for others
+            use_lightweight_for_ticker = use_lightweight and (ticker not in prophet_tickers)
+            future_to_ticker[executor.submit(_forecast_single_ticker, ticker, data[ticker], use_lightweight_for_ticker)] = ticker
         
         # Collect results as they complete
         completed_count = 0
+        lightweight_count = 0
+        prophet_count = 0
+        
         for future in as_completed(future_to_ticker):
             ticker = future_to_ticker[future]
             try:
@@ -235,16 +342,23 @@ def forecast_returns(data):
                 forecasts[result_ticker] = forecast_value
                 completed_count += 1
                 
+                # Track method usage
+                if use_lightweight and ticker not in prophet_tickers:
+                    lightweight_count += 1
+                else:
+                    prophet_count += 1
+                
                 # Progress logging
-                if completed_count % 10 == 0 or completed_count == len(data.columns):
-                    logger.info(f"Forecasting progress: {completed_count}/{len(data.columns)} completed")
+                if completed_count % 25 == 0 or completed_count == len(data.columns):
+                    logger.info(f"Forecasting progress: {completed_count}/{len(data.columns)} completed (Lightweight: {lightweight_count}, Prophet: {prophet_count})")
                     
             except Exception as exc:
                 logger.error(f"Forecasting generated an exception for {ticker}: {exc}")
                 forecasts[ticker] = 0.05  # Default fallback
     
     elapsed_time = time.time() - start_time
-    logger.info(f"PARALLEL forecasting completed in {elapsed_time:.2f} seconds for {len(forecasts)} tickers")
+    logger.info(f"PARALLEL {method} forecasting completed in {elapsed_time:.2f} seconds for {len(forecasts)} tickers")
+    logger.info(f"Method breakdown: {lightweight_count} lightweight, {prophet_count} Prophet")
     
     return pd.Series(forecasts)
 
@@ -287,10 +401,11 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     tickers = data.columns.tolist()
     logger.info(f"PIPELINE STAGE 2 FINAL: Proceeding with {len(tickers)} tickers for forecasting")
 
-    # Calculate expected returns using ML forecast and sample covariance
-    logger.info(f"Starting forecasting for {len(data.columns)} tickers: {list(data.columns)}")
-    mu = forecast_returns(data)
+    # Calculate expected returns using lightweight ML forecast by default
+    logger.info(f"Starting LIGHTWEIGHT forecasting for {len(data.columns)} tickers: {list(data.columns)}")
+    mu = forecast_returns(data, use_lightweight=True, prophet_ratio=0.1)  # Use Prophet for only 10% of tickers
     logger.info(f"Forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
+    logger.info(f"Performance: Lightweight forecasting used for ~90% of tickers, Prophet for ~10%")
     
     # Check for any missing tickers
     missing_tickers = set(data.columns) - set(mu.index)

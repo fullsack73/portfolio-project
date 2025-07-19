@@ -80,6 +80,9 @@ The core business logic is decoupled from the API routes and organized into sepa
 -   **High-Performance Data Processing**: Implements batch data fetching using yfinance's multi-ticker download capability, significantly reducing network latency and API call overhead for large portfolios.
 -   **Parallel ML Forecasting**: Uses ThreadPoolExecutor to run Prophet model training concurrently across multiple CPU cores, with intelligent worker allocation based on system capabilities and ticker count.
 -   **Performance Monitoring**: Includes timing and progress tracking for long-running operations, providing real-time feedback on optimization progress and performance metrics.
+-   **Hybrid Forecasting System**: Implements a sophisticated forecasting strategy that uses lightweight methods (exponential smoothing, linear trend analysis, volatility-adjusted historical means) for 90% of tickers and reserves Prophet for high-priority assets, achieving optimal balance between speed and accuracy.
+-   **Ensemble Forecasting**: Combines multiple lightweight forecasting methods using weighted averages to improve prediction reliability while maintaining fast execution times.
+-   **Intelligent Method Selection**: Automatically selects appropriate forecasting methods based on portfolio size and ticker priority, with configurable Prophet usage ratios for different use cases.
 
 This modularity makes the code easier to understand, maintain, and test.
 

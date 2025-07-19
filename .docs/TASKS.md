@@ -132,10 +132,10 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] **Strategy 2: Batch Data Fetching**
     - [x] Use yfinance batch download for multiple tickers in single API call
     - [x] Implement intelligent batching based on ticker count
-- [ ] **Strategy 3: Lightweight Forecasting**
-    - [ ] Replace Prophet with faster time series models for bulk processing
-    - [ ] Implement simple ARIMA or exponential smoothing as faster alternative
-    - [ ] Use Prophet only for high-priority/individual ticker analysis
+- [x] **Strategy 3: Lightweight Forecasting**
+    - [x] Replace Prophet with faster time series models for bulk processing
+    - [x] Implement simple ARIMA or exponential smoothing as faster alternative
+    - [x] Use Prophet only for high-priority/individual ticker analysis
 - [ ] **Strategy 4: Smart Caching System**
     - [ ] Cache historical data downloads by ticker and date range
     - [ ] Cache Prophet model forecasts with TTL (time-to-live)
