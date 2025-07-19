@@ -154,3 +154,20 @@ This file outlines the tasks completed during the development of the portfolio a
 - **Current**: ~5-10 minutes for S&P 500 optimization
 - **Target**: <30 seconds for S&P 500 optimization
 - **Stretch Goal**: <10 seconds with full caching
+
+### Critical Regression Issue:
+- **Problem**: After implementing batch fetching, ALL tickers (503/503) are being dropped during data cleaning
+- **Symptoms**: 
+  - `GET_STOCK_DATA FAILED: ['LH', 'EBAY', 'ADI', 'A', 'SMCI', 'TRV', 'APA', 'ABBV', 'LMT', 'CDW']...`
+  - `DROPPED DURING DATA CLEANING: 503 tickers`
+- **Root Cause Identified**: Incorrect handling of yfinance MultiIndex DataFrame structure for batch downloads
+  - yfinance returns MultiIndex columns: `('Close', 'AAPL')`, `('Close', 'MSFT')`, etc.
+  - Original code incorrectly accessed `batch_data.columns.names` instead of `batch_data.columns.get_level_values(0)`
+  - Close price extraction logic was fundamentally flawed for multi-ticker downloads
+- **Fix Implemented**: 
+  - Proper MultiIndex DataFrame handling with `isinstance(batch_data.columns, pd.MultiIndex)` check
+  - Correct Close price extraction using `batch_data.columns.get_level_values(0)`
+  - Enhanced logging to debug DataFrame structure issues
+  - Robust fallback handling for edge cases
+- **Priority**: CRITICAL - Portfolio optimization completely broken
+- **Fix Status**: [x] COMPLETED

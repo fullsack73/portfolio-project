@@ -65,22 +65,39 @@ def get_stock_data(tickers, start_date, end_date):
         
         # Handle single ticker case (returns Series instead of DataFrame)
         if len(tickers) == 1:
-            if 'Close' in batch_data.columns:
-                data = batch_data['Close']
+            # For single ticker, yfinance returns a simple DataFrame
+            if isinstance(batch_data.columns, pd.MultiIndex):
+                # If somehow we get MultiIndex for single ticker
+                close_data = batch_data['Close'] if 'Close' in batch_data.columns.get_level_values(0) else batch_data
             else:
-                data = batch_data
-            data.name = tickers[0]
-            final_data = pd.DataFrame(data)
+                # Normal case for single ticker
+                close_data = batch_data['Close'] if 'Close' in batch_data.columns else batch_data
+            
+            close_data.name = tickers[0]
+            final_data = pd.DataFrame(close_data)
         else:
             # Extract Close prices for multiple tickers
-            if 'Close' in batch_data.columns.names:
-                close_data = batch_data['Close']
+            logger.info(f"GET_STOCK_DATA: Batch data columns structure: {type(batch_data.columns)}")
+            logger.info(f"GET_STOCK_DATA: Batch data shape: {batch_data.shape}")
+            
+            if isinstance(batch_data.columns, pd.MultiIndex):
+                # MultiIndex columns: ('Close', 'AAPL'), ('Close', 'MSFT'), etc.
+                if 'Close' in batch_data.columns.get_level_values(0):
+                    close_data = batch_data['Close']
+                    logger.info(f"GET_STOCK_DATA: Extracted Close data shape: {close_data.shape}")
+                else:
+                    # Fallback: assume the entire DataFrame is price data
+                    close_data = batch_data
+                    logger.warning("GET_STOCK_DATA: No Close column found in MultiIndex, using entire DataFrame")
             else:
+                # Single level columns (shouldn't happen for multi-ticker, but handle it)
                 close_data = batch_data
+                logger.warning("GET_STOCK_DATA: Expected MultiIndex columns for multi-ticker download")
             
             # Fill missing values to create a clean, consistent dataset
             filled_data = close_data.ffill().bfill()
             final_data = filled_data.dropna(axis=1, how='all')  # Drop any columns that are still all NaN
+            logger.info(f"GET_STOCK_DATA: Final data shape after cleaning: {final_data.shape}")
         
         successful_tickers = list(final_data.columns)
         failed_tickers = list(set(tickers) - set(successful_tickers))
