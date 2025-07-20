@@ -1,16 +1,21 @@
 import logging
 from logging import NullHandler
-import numpy as np
-import pandas as pd
 import yfinance as yf
-from pypfopt import EfficientFrontier, risk_models
+import pandas as pd
+import numpy as np
+from pypfopt import EfficientFrontier, risk_models, expected_returns
+from pypfopt.risk_models import CovarianceShrinkage
 from prophet import Prophet
-from ticker_lists import get_ticker_group
-import cmdstanpy
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import warnings
+import logging
 import time
-from scipy import stats
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from scipy.stats import expon
 from sklearn.linear_model import LinearRegression
+from cache_manager import (
+    get_cache, cached, cache_stock_data_key, 
+    cache_forecast_key, cache_portfolio_key
+)
 
 # Define a dummy function to suppress logging
 # def silent_logger(*args, **kwargs):
@@ -49,8 +54,9 @@ def sanitize_tickers(tickers):
     
     return sanitized
 
+@cached(l1_ttl=900, l2_ttl=14400)  # 15 min L1, 4 hour L2 cache
 def get_stock_data(tickers, start_date, end_date):
-    """Fetch stock data for given tickers and date range using batch processing."""
+    """Fetch stock data for given tickers and date range using batch processing with aggressive caching."""
     logger.info(f"GET_STOCK_DATA: Starting BATCH fetch for {len(tickers)} tickers")
     
     # Sanitize tickers first
@@ -87,63 +93,44 @@ def get_stock_data(tickers, start_date, end_date):
                 if 'Close' in batch_data.columns.get_level_values(0):
                     close_data = batch_data['Close']
                     logger.info(f"GET_STOCK_DATA: Extracted Close data shape: {close_data.shape}")
-                else:
-                    # Fallback: assume the entire DataFrame is price data
-                    close_data = batch_data
-                    logger.warning("GET_STOCK_DATA: No Close column found in MultiIndex, using entire DataFrame")
-            else:
-                # Single level columns (shouldn't happen for multi-ticker, but handle it)
-                close_data = batch_data
-                logger.warning("GET_STOCK_DATA: Expected MultiIndex columns for multi-ticker download")
+        
+        # Clean the data
+        close_data = close_data.fillna(method='ffill').dropna()
+        logger.info(f"GET_STOCK_DATA: Data cleaned, final shape: {close_data.shape}")
+        
+        # Ensure we have data
+        if close_data.empty:
+            logger.error(f"GET_STOCK_DATA: No data returned after cleaning")
+            return pd.DataFrame()
             
-            # Fill missing values to create a clean, consistent dataset
-            filled_data = close_data.ffill().bfill()
-            final_data = filled_data.dropna(axis=1, how='all')  # Drop any columns that are still all NaN
-            logger.info(f"GET_STOCK_DATA: Final data shape after cleaning: {final_data.shape}")
-        
-        successful_tickers = list(final_data.columns)
-        failed_tickers = list(set(tickers) - set(successful_tickers))
-        
-        logger.info(f"GET_STOCK_DATA BATCH SUMMARY: {len(successful_tickers)} successful, {len(failed_tickers)} failed")
-        logger.info(f"GET_STOCK_DATA SUCCESSFUL: {successful_tickers[:10]}{'...' if len(successful_tickers) > 10 else ''}")
-        if failed_tickers:
-            logger.warning(f"GET_STOCK_DATA FAILED: {failed_tickers[:10]}{'...' if len(failed_tickers) > 10 else ''}")
-        
-        logger.info(f"GET_STOCK_DATA FINAL: Returning data with shape {final_data.shape}")
+        final_data = close_data
+        logger.info(f"GET_STOCK_DATA: BATCH fetch successful for {len(final_data.columns)} tickers")
         return final_data
         
     except Exception as e:
-        logger.error(f"GET_STOCK_DATA: Batch download failed: {e}. Falling back to individual downloads.")
+        logger.error(f"GET_STOCK_DATA: Batch fetch failed: {e}")
+        logger.info(f"GET_STOCK_DATA: Falling back to individual ticker fetching")
         
-        # Fallback to individual downloads if batch fails
-        all_data = []
-        successful_tickers = []
-        failed_tickers = []
-        
+        # Fallback to individual ticker fetching
+        individual_data = {}
         for ticker in tickers:
             try:
-                data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)['Close']
-                if data.empty:
-                    failed_tickers.append(ticker)
-                    continue
-                data.name = ticker
-                all_data.append(data)
-                successful_tickers.append(ticker)
+                ticker_data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
+                if not ticker_data.empty and 'Close' in ticker_data.columns:
+                    individual_data[ticker] = ticker_data['Close']
+                    logger.info(f"GET_STOCK_DATA: Individual fetch successful for {ticker}")
+                else:
+                    logger.warning(f"GET_STOCK_DATA: No data for {ticker}")
             except Exception as ticker_error:
-                logger.error(f"GET_STOCK_DATA: Error fetching data for {ticker}: {ticker_error}")
-                failed_tickers.append(ticker)
-                continue
+                logger.error(f"GET_STOCK_DATA: Failed to fetch {ticker}: {ticker_error}")
         
-        if not all_data:
-            logger.warning("GET_STOCK_DATA: No successful data fetches, returning empty DataFrame")
+        if individual_data:
+            final_data = pd.DataFrame(individual_data).fillna(method='ffill').dropna()
+            logger.info(f"GET_STOCK_DATA: Individual fallback successful for {len(final_data.columns)} tickers")
+            return final_data
+        else:
+            logger.error(f"GET_STOCK_DATA: All fetching methods failed")
             return pd.DataFrame()
-        
-        combined_data = pd.concat(all_data, axis=1)
-        filled_data = combined_data.ffill().bfill()
-        final_data = filled_data.dropna(axis=1, how='all')
-        
-        logger.info(f"GET_STOCK_DATA FALLBACK FINAL: Returning data with shape {final_data.shape}")
-        return final_data
 
 def _exponential_smoothing_forecast(prices, alpha=0.3):
     """Fast exponential smoothing forecast."""
@@ -222,8 +209,9 @@ def _historical_volatility_adjusted_forecast(prices):
     
     return annual_return
 
+@cached(l1_ttl=1800, l2_ttl=7200)  # 30 min L1, 2 hour L2 cache for forecasts
 def _forecast_single_ticker(ticker, ticker_data, use_lightweight=True):
-    """Helper function to forecast returns for a single ticker with lightweight methods by default."""
+    """Helper function to forecast returns for a single ticker with lightweight methods by default and caching."""
     try:
         prices = ticker_data.values
         
@@ -362,10 +350,17 @@ def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1):
     
     return pd.Series(forecasts)
 
+@cached(l1_ttl=600, l2_ttl=3600)  # 10 min L1, 1 hour L2 cache for portfolio optimization
 def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
     """
-    Optimize portfolio based on user preferences using PyPortfolioOpt.
+    Optimize portfolio based on user preferences using PyPortfolioOpt with aggressive caching.
     """
+    # Log cache performance at start of optimization
+    cache = get_cache()
+    cache_stats = cache.stats()
+    logger.info(f"CACHE PERFORMANCE: L1 Hit: {cache_stats['hit_ratios']['l1']:.1%}, L2 Hit: {cache_stats['hit_ratios']['l2']:.1%}, Overall: {cache_stats['hit_ratios']['overall']:.1%}")
+    logger.info(f"CACHE MEMORY: {cache_stats['l1_cache']['memory_usage_mb']:.1f}MB / {cache_stats['l1_cache']['memory_limit_mb']:.1f}MB ({cache_stats['l1_cache']['memory_utilization']:.1%})")
+    
     # Get tickers from the selected group or use the provided list
     if tickers:
         pass

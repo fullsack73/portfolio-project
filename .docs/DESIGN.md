@@ -83,6 +83,8 @@ The core business logic is decoupled from the API routes and organized into sepa
 -   **Hybrid Forecasting System**: Implements a sophisticated forecasting strategy that uses lightweight methods (exponential smoothing, linear trend analysis, volatility-adjusted historical means) for 90% of tickers and reserves Prophet for high-priority assets, achieving optimal balance between speed and accuracy.
 -   **Ensemble Forecasting**: Combines multiple lightweight forecasting methods using weighted averages to improve prediction reliability while maintaining fast execution times.
 -   **Intelligent Method Selection**: Automatically selects appropriate forecasting methods based on portfolio size and ticker priority, with configurable Prophet usage ratios for different use cases.
+-   **Multi-Level Caching System**: Implements aggressive L1 (in-memory) and L2 (persistent) caching with intelligent TTL management, background warming, and graceful fallbacks for maximum performance optimization.
+-   **Cache-Aware Architecture**: All data-intensive functions use caching decorators with appropriate TTL settings, transforming the system from batch processing to near real-time analysis capabilities.
 
 This modularity makes the code easier to understand, maintain, and test.
 
