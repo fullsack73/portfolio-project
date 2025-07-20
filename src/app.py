@@ -8,6 +8,7 @@ from hedge_analysis import analyze_hedge_relationship
 from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
 import lightgbm as lgb
 import pandas as pd
+import psutil
 from financial_statement import get_financial_ratios
 from portfolio_optimization import optimize_portfolio
 from ticker_lists import get_ticker_group

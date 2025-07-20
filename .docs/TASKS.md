@@ -231,6 +231,22 @@ This file outlines the tasks completed during the development of the portfolio a
 4. **Phase 4**: Strategy 9-11 (Advanced optimizations) - Fine-tuning
 
 **Expected Result**: Transform from a "batch processing" tool to a "real-time" financial analysis platform suitable for professional trading environments.
+
+### 🔧 **Active Debugging Tasks**
+- [x] **Fix `get_ticker_group` NameError in portfolio optimization API** ✅ **RESOLVED**
+  - **Root Cause**: Missing `from ticker_lists import get_ticker_group` in `portfolio_optimization.py`
+  - **Fix Applied**: Added import statement on line 19
+  - **Test Result**: API endpoint now returns successful portfolio optimization (AAPL/MSFT/GOOGL test passed)
+  - **Resolution Time**: < 5 minutes
+- [x] **Fix `stats` NameError in lightweight forecasting** ✅ **RESOLVED**
+  - **Problem**: Lightweight forecasting functions failing with `NameError: name 'stats' is not defined`
+  - **Root Cause**: Missing `linregress` import from `scipy.stats` in `portfolio_optimization.py`
+  - **Fix Applied**: Added `linregress` to import and updated function call
+  - **Test Result**: Lightweight forecasting now works without Prophet fallback
+  - **Performance Impact**: Restored 90% lightweight + 10% Prophet hybrid forecasting
+  - **Resolution Time**: < 5 minutes
+- [ ] Test caching system performance with real portfolio optimization requests
+- [ ] Validate cache hit ratios and memory usage under load
     - [ ] Implement early termination for obviously problematic tickers
     - [ ] Use sampling for very large portfolios (e.g., top 100 from S&P 500)
 

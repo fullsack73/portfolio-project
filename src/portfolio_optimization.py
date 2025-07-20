@@ -10,12 +10,13 @@ import warnings
 import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from scipy.stats import expon
+from scipy.stats import expon, linregress
 from sklearn.linear_model import LinearRegression
 from cache_manager import (
     get_cache, cached, cache_stock_data_key, 
     cache_forecast_key, cache_portfolio_key
 )
+from ticker_lists import get_ticker_group
 
 # Define a dummy function to suppress logging
 # def silent_logger(*args, **kwargs):
@@ -149,7 +150,7 @@ def _exponential_smoothing_forecast(prices, alpha=0.3):
     
     # Linear trend extrapolation
     x = np.arange(len(recent_data))
-    slope, intercept, _, _, _ = stats.linregress(x, recent_data)
+    slope, intercept, _, _, _ = linregress(x, recent_data)
     
     # Project 252 days ahead (1 year)
     future_price = slope * (len(recent_data) + 252) + intercept
