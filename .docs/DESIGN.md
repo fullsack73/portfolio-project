@@ -131,7 +131,8 @@ This modularity makes the code easier to understand, maintain, and test.
     -   The Flask route handler receives the request.
     -   It calls the `generate_regression_data` function.
     -   This function uses `yfinance` to download the historical data for AAPL.
-    -   It then uses `pandas` for feature engineering and `LightGBM` to train a model and generate regression/prediction data.
+    -   It then uses `pandas` for feature engineering and `LightGBM` to train a model. The model is trained to predict daily price *changes* rather than absolute prices, which allows it to extrapolate trends into the future.
+    -   The predicted daily changes are then cumulatively added to the last known price to construct the future forecast.
 5.  **JSON Response**: The backend formats the results (prices, regression data, company name) into a JSON object and sends it back to the frontend.
 6.  **Frontend State Update**: The `.then()` block of the fetch call in `App.jsx` receives the JSON data and updates the application's state (`data`, `regressionData`, etc.) using `useState`.
 7.  **UI Re-render**: The state update triggers a re-render of the `AppContent` component. The `StockChart` and `RegressionChart` components receive the new data as props and display the visualizations.

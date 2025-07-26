@@ -87,6 +87,12 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] **Batch Fetching Regression:** Corrected handling of yfinance MultiIndex DataFrames.
 - [ ] **Caching Performance:** Test caching system performance and hit ratios under load.
 - [x] **Input Flow:** Final verification of user input flow after refactoring.
+- [x] **Fixing Regression:** Fixing the future regression graph being flat line issue.
+
+## Regression Forecasting Fix
+- [x] **Refactor Forecasting Model:** Modify `generate_regression_data` in `src/app.py` to predict daily price *changes* instead of absolute prices to enable trend extrapolation.
+- [x] **Implement Cumulative Forecasting:** Accumulate the predicted daily changes to construct the full future price forecast.
+- [x] **Update Documentation:** Update `DESIGN.md` to reflect the new forecasting methodology.
 
 ## Debouncing and API Call Optimization
 - [x] **Fix Request Spam:** Investigate and fix frontend request spamming issue by implementing proper debouncing.

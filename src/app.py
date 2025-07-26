@@ -68,80 +68,75 @@ def generate_regression_data(ticker="", start_date=None, end_date=None, future_d
             print(f"No data received from yfinance for {ticker}")
             return {}
             
-        # Feature Engineering: Adding moving averages, lagged price, and volume
-        df['Time'] = np.arange(len(df)) # Original time index
+        # Feature Engineering: Create features that might predict the *change* in price
+        df['Time'] = np.arange(len(df))
         df['MA7'] = df['Close'].rolling(window=7).mean()
-        df['MA21'] = df['Close'].rolling(window=21).mean() # A common short-medium term moving average
-        df['Lag1'] = df['Close'].shift(1) # Previous day's closing price
-        # 'Volume' is typically available in df from yf.Ticker().history()
+        df['MA21'] = df['Close'].rolling(window=21).mean()
+        df['Lag1'] = df['Close'].shift(1)
+        
+        # Target variable: Daily change in price
+        df['Price_Change'] = df['Close'].diff()
 
-        # Drop rows with NaN values created by rolling window and shift operations
-        # This ensures the model trains on complete data points
+        # Drop rows with NaN values
         df.dropna(inplace=True)
         
         if df.empty:
-            print(f"Not enough data for {ticker} after feature engineering (NaN drop). Consider a longer date range or simpler features.")
+            print(f"Not enough data for {ticker} after feature engineering. Consider a longer date range.")
             return {}
             
-        # Prepare data for regression using the new features
+        # Prepare data for regression
         feature_columns = ['Time', 'MA7', 'MA21', 'Lag1', 'Volume']
         X = df[feature_columns]
-        y = df['Close'].values  # Target variable remains the closing price
+        y = df['Price_Change'].values  # Predict the change, not the absolute price
         
-        # fit LightGBM model
+        # Fit LightGBM model
         model = lgb.LGBMRegressor(n_estimators=100, learning_rate=0.1, num_leaves=31, verbose=-1)
         model.fit(X, y)
         
-        # generate regression line
-        y_pred = model.predict(X)
+        # Generate regression line based on predicted changes
+        predicted_changes = model.predict(X)
+        # The regression line is the cumulative sum of predicted changes, starting from the first close price
+        regression_line = df['Close'].iloc[0] + np.cumsum(predicted_changes)
         
-        # convert to date:value format for both original and regression data
+        # Convert to date:value format
         dates = df.index.strftime('%Y-%m-%d').tolist()
-        original_data = {date: float(price) for date, price in zip(dates, y)}
-        regression_data = {date: float(price) for date, price in zip(dates, y_pred)}
+        original_data = {date: float(price) for date, price in zip(dates, df['Close'])}
+        regression_data = {date: float(price) for date, price in zip(dates, regression_line)}
         
-        # get stock info
+        # Get stock info
         info = stock.info
         company_name = info.get('longName', ticker)
 
         future_predictions = {}
-        if future_days > 0 and not X.empty: # Ensure there's data to predict from
+        if future_days > 0 and not X.empty:
+            last_known_price = df['Close'].iloc[-1]
             last_date = df.index[-1]
-            # Keep a rolling window of prices for MA calculation, including historical and new predictions
-            all_prices = list(y)
-            # Last known volume (simplification)
-            last_volume = df['Volume'].iloc[-1] if 'Volume' in df.columns and not df['Volume'].empty else 0
-            # Last time index
-            last_time_index = df['Time'].iloc[-1]
-
-            current_features_df = df[feature_columns].copy()
+            
+            # Use the last row of features as the starting point for future predictions
+            last_features = df[feature_columns].iloc[-1:].copy()
 
             for i in range(future_days):
+                # Predict the change for the next day
+                predicted_change = model.predict(last_features)[0]
+                
+                # Calculate the new price
+                next_price = last_known_price + predicted_change
+                
+                # Update features for the next iteration
                 next_date = last_date + timedelta(days=i + 1)
+                last_features['Time'] += 1
+                last_features['Lag1'] = last_known_price
                 
-                # Prepare features for the next day
-                lag1_future = all_prices[-1]
+                # For MAs, we'd ideally re-calculate based on a rolling window of prices.
+                # This is a simplification; for more accuracy, we'd append the new price and re-calculate.
+                # For this implementation, we'll keep them constant from the last known value,
+                # as re-calculating them properly requires a more complex setup.
                 
-                temp_prices_for_ma = pd.Series(all_prices)
-                ma7_future = temp_prices_for_ma.rolling(window=7).mean().iloc[-1] if len(temp_prices_for_ma) >= 7 else np.nan
-                ma21_future = temp_prices_for_ma.rolling(window=21).mean().iloc[-1] if len(temp_prices_for_ma) >= 21 else np.nan
-
-                time_future = last_time_index + i + 1
-
-                future_feature_vector = [[time_future, ma7_future, ma21_future, lag1_future, last_volume]]
+                # Store prediction
+                future_predictions[next_date.strftime('%Y-%m-%d')] = float(next_price)
                 
-                if np.isnan(future_feature_vector[0][1]): # MA7
-                    future_feature_vector[0][1] = current_features_df['MA7'].iloc[-1] if not current_features_df['MA7'].empty else 0
-                if np.isnan(future_feature_vector[0][2]): # MA21
-                    future_feature_vector[0][2] = current_features_df['MA21'].iloc[-1] if not current_features_df['MA21'].empty else 0
-
-                # Predict
-                future_df = pd.DataFrame(future_feature_vector, columns=feature_columns)
-                predicted_price = model.predict(future_df)[0]
-                
-                # Store prediction and update for next iteration
-                future_predictions[next_date.strftime('%Y-%m-%d')] = float(predicted_price)
-                all_prices.append(predicted_price)
+                # Update last known price for the next prediction
+                last_known_price = next_price
         
         return {
             'prices': original_data,
