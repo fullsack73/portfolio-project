@@ -9,7 +9,7 @@ from prophet import Prophet
 import warnings
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from scipy.stats import expon, linregress
 from sklearn.linear_model import LinearRegression
 from cache_manager import (
@@ -112,18 +112,31 @@ def get_stock_data(tickers, start_date, end_date):
         logger.error(f"GET_STOCK_DATA: Batch fetch failed: {e}")
         logger.info(f"GET_STOCK_DATA: Falling back to individual ticker fetching")
         
-        # Fallback to individual ticker fetching
+        # Fallback to parallel individual ticker fetching
         individual_data = {}
-        for ticker in tickers:
+        import os
+        max_workers = min(os.cpu_count() or 4, len(tickers), 16) # Cap at 16 for I/O
+        logger.info(f"GET_STOCK_DATA: Using {max_workers} parallel workers for individual fetch")
+
+        def _fetch_single(ticker):
             try:
                 ticker_data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
                 if not ticker_data.empty and 'Close' in ticker_data.columns:
-                    individual_data[ticker] = ticker_data['Close']
                     logger.info(f"GET_STOCK_DATA: Individual fetch successful for {ticker}")
+                    return ticker, ticker_data['Close']
                 else:
                     logger.warning(f"GET_STOCK_DATA: No data for {ticker}")
+                    return ticker, None
             except Exception as ticker_error:
                 logger.error(f"GET_STOCK_DATA: Failed to fetch {ticker}: {ticker_error}")
+                return ticker, None
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_ticker = {executor.submit(_fetch_single, ticker): ticker for ticker in tickers}
+            for future in as_completed(future_to_ticker):
+                ticker, data = future.result()
+                if data is not None:
+                    individual_data[ticker] = data
         
         if individual_data:
             final_data = pd.DataFrame(individual_data).fillna(method='ffill').dropna()
@@ -310,8 +323,8 @@ def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1):
     
     forecasts = {}
     
-    # Use ThreadPoolExecutor for parallel processing
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    # Use ProcessPoolExecutor for CPU-bound forecasting tasks
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         # Submit all forecasting tasks
         future_to_ticker = {}
         for ticker in data.columns:

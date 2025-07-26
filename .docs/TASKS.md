@@ -1,113 +1,62 @@
-
 # Project Tasks
 
 This file outlines the tasks completed during the development of the portfolio analysis and optimization tool.
 
-## Project Setup & Foundation
-- [x] Initialize React frontend application.
-- [x] Set up Python backend server.
-- [x] Establish communication between frontend and backend.
-- [x] Initialize Git for version control.
-- [x] Define project structure and file organization.
-- [x] Configure ESLint for code quality.
+## ✅ Completed Tasks
 
-## Backend Development
-- [x] Create API endpoint to fetch historical stock data.
-- [x] Implement Monte Carlo simulation for portfolio projection.
-- [x] Develop portfolio optimization logic using the Markowitz model.
-- [x] Implement hedging analysis to find correlated assets.
-- [x] Create endpoint to serve financial statement data.
+### Project Setup & Foundation
+- [x] Initialize React frontend and Python backend.
+- [x] Establish communication between frontend and backend.
+- [x] Set up Git, ESLint, and project structure.
+
+### Backend Development
+- [x] Implement APIs for historical stock data, financial statements, and hedging analysis.
+- [x] Develop Monte Carlo simulation for portfolio projection.
+- [x] Implement portfolio optimization using the Markowitz model.
 - [x] Add utility to read stock tickers from CSV files.
 
-## Frontend Development
-- [x] Design the main application layout and UI components.
-- [x] Create `TickerInput` for stock selection.
-- [x] Develop `PortfolioInput` to define asset allocations.
-- [x] Implement `StockChart` to visualize historical price data.
-- [x] Create `PortfolioGraph` to display portfolio performance.
-- [x] Build `FinancialStatement` component to show company financials.
-- [x] Develop `Optimizer` component for portfolio optimization.
-- [x] Create `Hedge` component for hedging analysis.
-- [x] Implement `FutureChart` to display Monte Carlo simulation results.
-- [x] Add date input components for selecting time ranges.
+### Frontend Development
+- [x] Design main application layout and UI components.
+- [x] Create components for ticker input, portfolio allocation, and date selection.
+- [x] Implement charts for historical data, portfolio performance, and Monte Carlo simulations.
+- [x] Build components for financial statements, optimization, and hedging analysis.
 
-## Internationalization (i18n)
-- [x] Integrate `i18next` for internationalization.
-- [x] Create translation files for English (`en`) and Korean (`ko`).
-- [x] Implement `LanguageSelector` component.
-- [x] Wrap UI text with translation functions.
+### Internationalization (i18n)
+- [x] Integrate `i18next` for English and Korean language support.
+- [x] Implement a language selector and wrap UI text with translation functions.
 
-## Documentation
-- [x] Write `README.md` with a project overview and setup instructions.
-- [x] Create `REQUIREMENTS.md` to detail project requirements.
-- [x] Write `DESIGN.md` to outline the technical design and architecture.
-- [x] Create this `TASKS.md` file to track project development progress.
+### ML-Based Enhancements
+- [x] Integrate `Prophet` for time-series forecasting of asset returns.
+- [x] Update backend and frontend to support ML-based forecasting as an option.
+- [x] Set ML forecasting as the default and implement a resilient data pipeline.
+- [x] Refactor regression model to predict price changes for better trend extrapolation.
 
-## ML-Based Portfolio Optimization
-- [x] **Backend:** Integrate `Prophet` for time-series forecasting of asset returns.
-- [x] **Backend:** Update `portfolio_optimization.py` to include a function for ML-based return forecasting.
-- [x] **Backend:** Modify the `optimize_portfolio` function and the API endpoint in `app.py` to handle a `use_ml_forecast` flag.
-- [x] **Frontend:** Add a checkbox to the `Optimizer.jsx` component to enable ML forecasting.
-- [x] **Frontend:** Update `handleSubmit` in `Optimizer.jsx` to send the `use_ml_forecast` flag to the backend.
-- [x] **i18n:** Add translations for the new UI element in both English and Korean.
-- [x] **Documentation:** Update `REQUIREMENTS.md` and `DESIGN.md` to reflect the new feature.
+### Performance Optimization
+- [x] Implement concurrent processing for model training and data fetching.
+- [x] Optimize data fetching with batch downloads.
+- [x] Introduce lightweight forecasting models (ARIMA, Exponential Smoothing).
+- [x] Implement multi-level caching (In-Memory & Redis/Disk) with cache warming.
 
-## Data Pipeline & Forecasting Engine
-- [x] **ML Forecasting as Default:** Enabled Prophet-based ML forecasting as the default.
-- [x] **Robust Data Pipeline:** Implemented a resilient data fetching and processing pipeline with ticker sanitization, intelligent data filling, and graceful failure handling.
-- [x] **Critical Bug Fixes:**
-    - [x] Resolved data alignment errors between returns and covariance matrix.
-    - [x] Fixed Prophet "Length mismatch" errors with standardized DataFrame structure.
-    - [x] Addressed various `NameError` issues.
-- [x] **Log Suppression:** Silenced verbose logs from third-party libraries.
+### Refactoring & Bug Fixes
+- [x] Refactor frontend state management for centralized data updates and auto-updates on input change.
+- [x] Fix request spamming by implementing debouncing and request cancellation.
+- [x] Resolve various bugs, including data alignment errors, Prophet model issues, and `NameError` exceptions.
+- [x] Corrected data handling for `yfinance` MultiIndex DataFrames.
+- [x] Fixed flat line issue in the regression forecast graph.
 
-## Performance Optimization
-- [x] **Parallel Processing:** Implemented concurrent model training and data fetching.
-- [x] **Batch Data Fetching:** Switched to batch downloads for multiple tickers.
-- [x] **Lightweight Forecasting:** Introduced faster alternatives to Prophet (ARIMA, exponential smoothing).
-- [x] **Aggressive Caching:**
-    - [x] Implemented multi-level caching (In-Memory & Redis/Disk).
-    - [x] Added cache warming and smart invalidation.
-- [ ] **Future Optimizations (Planned):**
-    - [ ] Memory-intensive pre-processing and model pre-training.
-    - [ ] Advanced parallel processing (Multi-processing + Multi-threading).
-    - [ ] GPU acceleration for matrix operations.
-    - [ ] Optimized data structures and predictive prefetching.
+### Documentation
+- [x] Create `README.md`, `REQUIREMENTS.md`, `DESIGN.md`, and `TASKS.md`.
+- [x] Keep documentation updated with new features and architectural changes.
 
-## Frontend Refactoring & UX Improvements
-- [x] **Unified Update Logic:** Refactored `App.jsx` to use a single, centralized data update function.
-- [x] **Auto-Updates:** Removed manual "Update" buttons from input components (`DateInput`, `FutureDateInput`).
-- [x] **Debouncing:** Added debouncing to inputs to prevent excessive API calls.
-- [x] **State Synchronization:** Fixed race conditions and state lag issues.
-- [x] **API Call Optimization:** Implemented request cancellation (`AbortController`) to prevent redundant fetches.
-
-## Ongoing Debugging & Issues
-- [x] **`get_ticker_group` NameError:** Resolved missing import in `portfolio_optimization.py`.
-- [x] **`stats` NameError:** Fixed missing import for lightweight forecasting.
-- [x] **Batch Fetching Regression:** Corrected handling of yfinance MultiIndex DataFrames.
-- [ ] **Caching Performance:** Test caching system performance and hit ratios under load.
-- [x] **Input Flow:** Final verification of user input flow after refactoring.
-- [x] **Fixing Regression:** Fixing the future regression graph being flat line issue.
-
-## Regression Forecasting Fix
-- [x] **Refactor Forecasting Model:** Modify `generate_regression_data` in `src/app.py` to predict daily price *changes* instead of absolute prices to enable trend extrapolation.
-- [x] **Implement Cumulative Forecasting:** Accumulate the predicted daily changes to construct the full future price forecast.
-- [x] **Update Documentation:** Update `DESIGN.md` to reflect the new forecasting methodology.
-
-## Debouncing and API Call Optimization
-- [x] **Fix Request Spam:** Investigate and fix frontend request spamming issue by implementing proper debouncing.
-- [x] **Implement Debouncing:** Apply a robust debouncing mechanism to the `updateData` function in `App.jsx` to prevent excessive API calls.
-- [x] **Update Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to accurately reflect the new debouncing implementation.
-
-## Frontend Refactoring (Request Spam Fix)
-- [x] **Analyze Root Cause:** Identify why the previous debouncing implementation was ineffective.
-- [x] **Refactor State Management:** Change `App.jsx` to trigger data fetches from a `useEffect` hook that depends on input state variables (`ticker`, dates, etc.).
-- [x] **Centralize Fetch Logic:** Ensure all data fetch requests originate from a single, debounced `useEffect` to eliminate race conditions and redundant calls.
-- [x] **Remove Direct API Calls:** Eliminate direct calls to the data fetching function from event handlers (`handleTickerChange`, etc.).
-- [x] **Verify Fix:** Test the application to confirm that request spamming is resolved and data updates correctly on input changes.
-- [x] **Update Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to reflect the new, more robust data fetching architecture.
-
-## Debouncing and API Call Optimization
-- [x] **Fix Request Spam:** Investigate and fix frontend request spamming issue by implementing proper debouncing.
-- [x] **Implement Debouncing:** Apply a robust debouncing mechanism to the `updateData` function in `App.jsx` to prevent excessive API calls.
-- [x] **Update Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to accurately reflect the new debouncing implementation.
+## 🚧 Planned Future Optimizations(for portfolio optimizer)
+- [ ] Memory-intensive pre-processing and model pre-training.
+- [ ] **Ultra-Parallel Processing**
+    - [x] **Hybrid Processing Model:**
+        - [x] Use `ProcessPoolExecutor` for CPU-intensive model training (`Prophet`, `ARIMA`).
+        - [x] Use `ThreadPoolExecutor` for I/O-bound tasks (API calls, cache operations).
+        - [x] Integrate `asyncio` for non-blocking I/O.
+    - [ ] **GPU Acceleration (Optional):**
+        - [ ] Research `CuPy`/`Numba` for GPU-accelerated matrix operations.
+        - [ ] Implement GPU-based covariance matrix calculations.
+- [ ] Optimized data structures and predictive prefetching.
+- [ ] Load test caching system and analyze hit ratios.
