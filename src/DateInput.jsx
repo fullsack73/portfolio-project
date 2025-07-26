@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 function DateInput({ onDateRangeChange }) {
@@ -23,11 +23,39 @@ function DateInput({ onDateRangeChange }) {
     setStartDate(formatDate(threeMonthsAgo));
   }, []);
 
-  const handleDateChange = () => {
+  // Debounced update function to prevent excessive API calls
+  const debouncedUpdate = useCallback(
+    (() => {
+      let timeoutId;
+      return (start, end, source = 'unknown') => {
+        console.log(`📅 DateInput debounced update from: ${source}`, { start, end });
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          if (start && end && onDateRangeChange) {
+            console.log('📅 DateInput calling parent onDateRangeChange:', { start, end });
+            onDateRangeChange(start, end);
+          }
+        }, 500); // 500ms delay
+      };
+    })(),
+    [onDateRangeChange]
+  );
+
+  // Track if this is initial setup to avoid triggering parent callback on mount
+  const [isInitialSetup, setIsInitialSetup] = useState(true);
+  
+  // Auto-update when dates change (but not on initial setup)
+  useEffect(() => {
     if (startDate && endDate) {
-      onDateRangeChange(startDate, endDate);
+      if (isInitialSetup) {
+        console.log('📅 DateInput: Skipping initial setup callback');
+        setIsInitialSetup(false);
+      } else {
+        console.log('📅 DateInput: User changed dates, calling debounced update');
+        debouncedUpdate(startDate, endDate, 'user-input');
+      }
     }
-  };
+  }, [startDate, endDate, debouncedUpdate, isInitialSetup]);
 
   return (
     <div className="date-input-container">
@@ -38,6 +66,7 @@ function DateInput({ onDateRangeChange }) {
           id="startDate"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
+          title="Chart will auto-update when both dates are selected"
         />
       </div>
       <div className="date-input-group">
@@ -47,9 +76,10 @@ function DateInput({ onDateRangeChange }) {
           id="endDate"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
+          title="Chart will auto-update when both dates are selected"
         />
       </div>
-      <button onClick={handleDateChange}>{t('regression.updateChart')}</button>
+
     </div>
   );
 }

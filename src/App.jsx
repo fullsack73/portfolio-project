@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import i18n from './i18n';
 import StockChart from "./StockChart.jsx";
@@ -32,19 +32,38 @@ function AppContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const { t } = useTranslation();
+  
+  // AbortController to cancel previous API calls
+  const abortControllerRef = useRef(null);
 
-  const fetchData = (startDate = null, endDate = null, stockTicker = ticker) => {
+  // Unified data fetching function that always uses current state values
+  const updateData = (source = 'unknown') => {
+    console.log(`🔄 updateData called from: ${source}`);
+    console.log('📊 Current state values:', { ticker, appStartDate, appEndDate, futureDays });
+    
+    // Cancel any previous API call
+    if (abortControllerRef.current) {
+      console.log('❌ Cancelling previous API call');
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    
     setLoading(true);
-    let url = `/api/get-data?ticker=${stockTicker}&regression=true&future_days=${futureDays}`;
-    if (startDate && endDate) {
-      url += `&start_date=${startDate}&end_date=${endDate}`;
+    setError(null);
+    
+    let url = `/api/get-data?ticker=${ticker}&regression=true&future_days=${futureDays}`;
+    if (appStartDate && appEndDate) {
+      url += `&start_date=${appStartDate}&end_date=${appEndDate}`;
     }
 
-    console.log('Attempting to fetch data...');
+    console.log('🌐 API URL:', url);
     fetch(url, {
       method: 'GET',
       mode: 'cors',
       credentials: 'include',
+      signal: abortControllerRef.current.signal,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
@@ -68,6 +87,10 @@ function AppContent() {
         setShowChart(true);
       })
       .catch((error) => {
+        if (error.name === 'AbortError') {
+          console.log('🚫 API call was cancelled');
+          return; // Don't update state for cancelled requests
+        }
         console.error('Fetch error:', error);
         setError(error.message);
         setLoading(false);
@@ -88,40 +111,51 @@ function AppContent() {
     setAppEndDate(formatDate(yesterday));
   }, []);
 
-  // Initial data fetch, now dependent on appStartDate and appEndDate
+  // Initial data fetch when app dates are first initialized
+  const [isInitialized, setIsInitialized] = useState(false);
+  
   useEffect(() => {
-    if (appStartDate && appEndDate && ticker) {
-      fetchData(appStartDate, appEndDate, ticker);
+    if (appStartDate && appEndDate && ticker && !isInitialized) {
+      console.log('🚀 Initial data fetch triggered');
+      setIsInitialized(true);
+      updateData('initial-load');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appStartDate, appEndDate, ticker]); // Fetch when app dates are initialized or ticker changes initially.
+  }, [appStartDate, appEndDate, ticker, isInitialized]); // Only fetch on initial load
 
   const handleDateRangeChange = (newStartDate, newEndDate) => {
+    console.log('📅 Date range change:', { newStartDate, newEndDate });
     setAppStartDate(newStartDate);
     setAppEndDate(newEndDate);
-    if (ticker) {
-      fetchData(newStartDate, newEndDate, ticker);
-    }
+    // Use setTimeout to ensure state updates are applied before fetching
+    setTimeout(() => updateData('date-change'), 0);
   };
 
   const handleTickerChange = (newTicker) => {
+    console.log('🎯 Ticker change:', { newTicker });
     setTicker(newTicker);
-    // Use appStartDate and appEndDate if available, otherwise backend defaults (null, null)
-    fetchData(appStartDate, appEndDate, newTicker);
+    // Use setTimeout to ensure state updates are applied before fetching
+    setTimeout(() => updateData('ticker-change'), 0);
   };
 
   const handleFutureDaysChange = (days) => {
+    console.log('🔮 Future days change:', { days });
     setFutureDays(days);
-    // Use appStartDate and appEndDate if available, otherwise backend defaults (null, null)
-    fetchData(appStartDate, appEndDate, ticker);
+    // Use setTimeout to ensure state updates are applied before fetching
+    setTimeout(() => updateData('future-days-change'), 0);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (ticker) {
-      fetchData();
-    }
-  };
+  // Cleanup function to cancel any pending API calls
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        console.log('🧹 Cleanup: Cancelling pending API call');
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+
 
   return (
     <div className="app-container">
@@ -141,14 +175,12 @@ function AppContent() {
           <>
             <h1>{t('regression.title')}</h1>
             <div className="controls-container">
-              <TickerInput onTickerChange={handleTickerChange} onSubmit={handleSubmit} initialTicker="AAPL" />
+              <TickerInput onTickerChange={handleTickerChange} initialTicker="AAPL" />
               <DateInput onDateRangeChange={handleDateRangeChange} />
               <FutureDateInput onFutureDaysChange={handleFutureDaysChange} initialDays={futureDays} />
             </div>
 
-            {loading && <p className="loading">{t('common.loading')}</p>}
             {error && <p className="error">{t('common.error')}: {error}</p>}
-
 
             {showChart && data && (
               <>

@@ -17,6 +17,7 @@ The application is a comprehensive financial analysis tool that provides the fol
 - **Dynamic Views:** The main content area dynamically renders the component corresponding to the selected analysis module.
 - **Data Visualization:** Interactive charts, powered by Plotly.js, are used to display all financial data and analysis results.
 - **User Feedback:** The application provides clear loading and error states to keep the user informed during data-fetching and computation processes.
+- **Unified Update Experience:** Any parameter change (ticker, date range, or future prediction days) immediately triggers a complete data refresh, ensuring users see consistent results with a single interaction.
 
 ### III. Detailed Functional Requirements
 
@@ -31,6 +32,10 @@ The application is a comprehensive financial analysis tool that provides the fol
 - **1.3. Future Price Prediction:**
   - Users can input a number of future days for which to predict the stock price.
   - The application uses the trained regression model to forecast future prices and displays the prediction on a separate chart.
+- **1.4. Unified Parameter Updates:**
+  - Any change to ticker symbol, date range, or future prediction days automatically triggers a complete data refresh.
+  - Users receive immediate visual feedback with updated charts reflecting all current parameter values.
+  - No need for multiple button clicks to see the complete effect of parameter changes.
 
 #### 2. Hedge Analysis (`hedge` view)
 - **2.1. Input & Calculation:**

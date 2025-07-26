@@ -19,7 +19,7 @@ The frontend is structured as a modern React application, emphasizing a componen
 
 The UI is broken down into reusable components, each with a specific responsibility.
 
--   **`App.jsx`**: The main application component. It acts as the central controller, managing the overall application state, such as the currently active view (`activeView`), and orchestrating data fetching.
+-   **`App.jsx`**: The main application component. It acts as the central controller, managing the overall application state, such as the currently active view (`activeView`), and orchestrating data fetching. Features unified update logic where any parameter change (ticker, date range, or future prediction days) triggers a complete data refresh with all current state values.
 -   **View Components (`Hedge.jsx`, `Optimizer.jsx`, etc.):** Each major feature of the application has a corresponding top-level component that encapsulates its UI and logic. `App.jsx` conditionally renders one of these components based on the `activeView` state.
 -   **UI Components (`TickerInput.jsx`, `DateInput.jsx`, `Selector.jsx`):** These are smaller, reusable components used across different views for common UI elements like forms, buttons, and navigation.
 -   **Chart Components (`StockChart.jsx`, `PortfolioGraph.jsx`):** Specialized components that use the `react-plotly.js` library to render interactive data visualizations.
@@ -27,6 +27,20 @@ The UI is broken down into reusable components, each with a specific responsibil
 ### 2.2. State Management
 
 State is managed locally within components using React Hooks (`useState`, `useEffect`). For global concerns like the active view or language selection, state is lifted up to the nearest common ancestor, `App.jsx`, and passed down to child components via props. This approach is simple and effective for the current scale of the application.
+
+#### 2.2.1. Unified Data Update Pattern
+
+The application implements a comprehensive auto-update pattern across all input components to ensure seamless user experience:
+
+-   **`updateData()` Function**: A centralized function in `App.jsx` that always uses current state values (`ticker`, `appStartDate`, `appEndDate`, `futureDays`) for API calls
+-   **Auto-Update Components**: All input components (`TickerInput`, `DateInput`, `FutureDateInput`) automatically trigger updates when values change
+-   **Debounced Updates**: Each component implements debounced update logic to prevent excessive API calls:
+    -   **TickerInput**: 800ms delay for ticker symbol changes
+    -   **DateInput**: 500ms delay for date range changes
+    -   **FutureDateInput**: 500ms delay for prediction day changes
+-   **No Manual Buttons**: Eliminated all "Update Chart", "Update Prediction", and submit buttons for streamlined UX
+-   **State Synchronization**: Uses `setTimeout` to ensure state updates are applied before data fetching, preventing race conditions
+-   **Single Source of Truth**: All components immediately reflect changes and trigger complete data refresh
 
 ### 2.3. Styling
 

@@ -271,3 +271,138 @@ This file outlines the tasks completed during the development of the portfolio a
   - Robust fallback handling for edge cases
 - **Priority**: CRITICAL - Portfolio optimization completely broken
 - **Fix Status**: [x] COMPLETED
+
+## App.jsx Refactoring - Unified Button Update Logic
+
+### **Problem Statement**
+Currently, the App.jsx component has three separate buttons (ticker input, date range, future prediction days) that each trigger independent data updates. This creates a poor user experience where users must click multiple buttons sequentially to see the complete effect of changing a single parameter.
+
+### **Current Issues**
+1. **Fragmented Updates**: Each button handler (`handleTickerChange`, `handleDateRangeChange`, `handleFutureDaysChange`) calls `fetchData()` independently
+2. **Inconsistent State**: Users see partial updates when changing one parameter
+3. **Poor UX**: Requires multiple clicks to see complete results after changing any single input
+4. **Redundant API Calls**: Multiple unnecessary requests when users change multiple parameters
+
+### **Solution Design**
+- **Unified Update Logic**: Create a single `updateData()` function that always uses current state values
+- **Immediate Feedback**: Any button click triggers a complete data refresh with all current parameters
+- **State Synchronization**: Ensure all three parameters (ticker, date range, future days) are always used together
+- **Optimized API Calls**: Reduce redundant requests through better state management
+
+### **Implementation Tasks**
+- [x] **Analyze Current Structure**: Document current button handlers and data flow
+- [x] **Create Unified Update Function**: Replace individual `fetchData()` calls with centralized `updateData()`
+- [x] **Refactor Button Handlers**: Modify handlers to update state and trigger unified update
+- [x] **Remove Redundant useEffect**: Eliminate unnecessary effect dependencies that cause multiple fetches
+- [x] **Test User Experience**: Verify single-click updates work for all three buttons (replaced with auto-update)
+- [x] **Update Documentation**: Reflect changes in DESIGN.md and REQUIREMENTS.md
+
+### **Root Cause Analysis - Remaining Issues**
+After initial refactoring, users still need to click separate buttons because:
+1. **`DateInput.jsx`** has its own "Update Chart" button that calls `handleDateChange()`
+2. **`FutureDateInput.jsx`** has its own "Update Prediction" button that calls `handleClick()`
+3. These components maintain internal state and only update parent on button click
+4. The unified `updateData()` function in App.jsx is not automatically triggered by input changes
+
+### **Complete Solution Strategy**
+- **Option A: Auto-trigger on Input Change**
+  - Remove manual buttons from DateInput and FutureDateInput components
+  - Add onChange handlers that immediately call parent callback functions
+  - Use debouncing to prevent excessive API calls during typing
+  
+- **Option B: Unified Update Button**
+  - Remove individual component buttons
+  - Add single "Update All" button in App.jsx that triggers complete refresh
+  - Show current parameter values but require single action to apply changes
+
+**Selected Approach: Option A** - Auto-trigger for better UX
+
+### **Detailed Implementation Plan**
+- [x] **Remove Manual Buttons**: Delete "Update Chart" and "Update Prediction" buttons from components
+- [x] **Add Auto-Update Logic**: Implement onChange handlers that immediately call parent callbacks
+- [x] **Add Debouncing**: Prevent excessive API calls during rapid input changes (500ms for dates, 800ms for ticker)
+- [x] **Update Component Props**: Ensure parent callbacks are called with current values
+- [x] **Clean Up App.jsx**: Remove unused onSubmit prop and handleSubmit function
+- [ ] **Test Complete Flow**: Verify any input change triggers full data refresh
+
+## Debug Plan - User Input Ignored Issue
+
+### **Problem Analysis**
+From terminal logs, we can see:
+```
+GET /get-data?ticker=AAPL&regression=true&future_days=30&start_date=2022-04-19&end_date=2025-07-19
+GET /get-data?ticker=AAPL&regression=true&future_days=30&start_date=2025-04-19&end_date=2025-07-19
+GET /get-data?ticker=AAPL&regression=true&future_days=30&start_date=2022-04-19&end_date=2025-07-19
+```
+
+**Issues Identified:**
+1. **Multiple API Calls**: 3 calls in quick succession suggest race conditions
+2. **Inconsistent Date Ranges**: Different start dates (2022 vs 2025) indicate state synchronization issues
+3. **Default Values**: App appears to revert to default values instead of using user input
+4. **Future End Date**: End date shows 2025-07-19 (future date) suggesting initialization issues
+
+### **Root Cause Hypotheses**
+1. **State Race Conditions**: Debounced updates may be interfering with each other
+2. **useEffect Dependencies**: Initial data fetch useEffect may be overriding user changes
+3. **State Update Timing**: setTimeout in handlers may not be working correctly with React state batching
+4. **Component Re-initialization**: Components may be resetting to default values
+5. **API URL Construction**: updateData() may be using stale state values
+
+### **Debug Steps**
+- [x] **Add Console Logging**: Add detailed logging to track state changes and API calls
+- [x] **Check useEffect Dependencies**: Verified initial data fetch was overriding user input - FIXED
+- [x] **Test State Propagation**: Added logging to track parent state updates from child components
+- [x] **Debug Debouncing Logic**: Added logging to track debounced function calls
+- [x] **Verify API Call Parameters**: Added logging to show API URLs being constructed
+- [x] **Fix Race Conditions**: Implemented initialization flag to prevent multiple initial calls
+- [ ] **Test User Input Flow**: Ready to verify each input type works independently
+
+### **Key Fixes Implemented**
+1. **Race Condition Fix**: Added `isInitialized` flag to prevent useEffect from triggering multiple times
+2. **DateInput Initialization**: Added `isInitialSetup` flag to prevent callback on component mount
+3. **Comprehensive Logging**: Added detailed console logs to track the complete data flow
+4. **Source Tracking**: Each API call now shows which component/action triggered it
+
+## Ticker Input Synchronization Issue
+
+### **Problem Analysis**
+From latest terminal logs:
+```
+GET /get-data?ticker=AAPL&regression=true&future_days=30&start_date=2025-04-19&end_date=2025-07-19
+GET /get-data?ticker=MSFT&regression=true&future_days=30&start_date=2025-04-19&end_date=2025-07-19
+```
+
+**Issues Identified:**
+1. **Dual API Calls**: Both AAPL and MSFT calls are made when user changes ticker to MSFT
+2. **State Lag**: Suggests the old ticker state is still being used in one call
+3. **Race Condition**: Multiple updateData() calls happening simultaneously
+
+### **Root Cause Hypotheses**
+1. **TickerInput Debouncing**: 800ms delay may allow multiple state updates
+2. **State Closure**: updateData() may be capturing stale ticker state
+3. **Multiple Triggers**: Both initialization and user input triggering API calls
+4. **React State Batching**: State updates not being batched correctly
+
+### **Debug & Fix Plan**
+- [x] **Check Console Logs**: Examine browser console for debug output from our logging
+- [x] **Analyze State Timing**: Verified timing issues between state updates and API calls
+- [x] **Fix State Closure**: updateData() confirmed to use current state, not captured state
+- [x] **Optimize Debouncing**: Reduced TickerInput debounce from 800ms to 300ms
+- [x] **Add Call Cancellation**: Implemented AbortController to cancel previous API calls
+- [ ] **Test Ticker Changes**: Ready to verify only intended ticker is used in API calls
+
+### **Ticker Synchronization Fixes Implemented**
+1. **API Call Cancellation**: Added AbortController to cancel previous requests when new ones are made
+2. **Request Deduplication**: Only the most recent API call will complete, preventing dual ticker calls
+3. **Improved Debouncing**: Reduced ticker input delay from 800ms to 300ms for better responsiveness
+4. **Cleanup Handling**: Added useEffect cleanup to cancel pending calls on component unmount
+5. **Enhanced Logging**: Added cancellation logging to track when requests are aborted
+
+### **Expected Benefits**
+1. **Improved UX**: Single click on any button shows complete updated results
+2. **Consistent State**: All charts and data always reflect current parameter values
+3. **Reduced API Calls**: Eliminate redundant requests from sequential button clicks
+4. **Cleaner Code**: Centralized data fetching logic, easier to maintain
+
+### Additional issues identified
+1. **Redundant API Calls**: Calling same API multiple times when there is no change in parameters
