@@ -34,10 +34,7 @@ The application implements a comprehensive auto-update pattern across all input 
 
 -   **`updateData()` Function**: A centralized function in `App.jsx` that always uses current state values (`ticker`, `appStartDate`, `appEndDate`, `futureDays`) for API calls
 -   **Auto-Update Components**: All input components (`TickerInput`, `DateInput`, `FutureDateInput`) automatically trigger updates when values change
--   **Debounced Updates**: Each component implements debounced update logic to prevent excessive API calls:
-    -   **TickerInput**: 800ms delay for ticker symbol changes
-    -   **DateInput**: 500ms delay for date range changes
-    -   **FutureDateInput**: 500ms delay for prediction day changes
+-   **Debounced Updates**: A global debounce mechanism is implemented in `App.jsx` to prevent excessive API calls. All data-fetching triggers are funneled through a single, debounced `updateData` function with an 800ms delay.
 -   **No Manual Buttons**: Eliminated all "Update Chart", "Update Prediction", and submit buttons for streamlined UX
 -   **State Synchronization**: Uses `setTimeout` to ensure state updates are applied before data fetching, preventing race conditions
 -   **Single Source of Truth**: All components immediately reflect changes and trigger complete data refresh

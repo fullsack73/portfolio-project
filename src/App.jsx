@@ -36,14 +36,10 @@ function AppContent() {
   // AbortController to cancel previous API calls
   const abortControllerRef = useRef(null);
 
-  // Unified data fetching function that always uses current state values
-  const updateData = (source = 'unknown') => {
-    console.log(`🔄 updateData called from: ${source}`);
-    console.log('📊 Current state values:', { ticker, appStartDate, appEndDate, futureDays });
-    
+  // Unified data fetching function
+  const fetchData = () => {
     // Cancel any previous API call
     if (abortControllerRef.current) {
-      console.log('❌ Cancelling previous API call');
       abortControllerRef.current.abort();
     }
     
@@ -58,7 +54,6 @@ function AppContent() {
       url += `&start_date=${appStartDate}&end_date=${appEndDate}`;
     }
 
-    console.log('🌐 API URL:', url);
     fetch(url, {
       method: 'GET',
       mode: 'cors',
@@ -70,14 +65,12 @@ function AppContent() {
       }
     })
       .then((response) => {
-        console.log('Response status:', response.status);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
       })
       .then((responseData) => {
-        console.log('Raw data received:', responseData);
         setData(responseData.prices);
         setRegressionData(responseData.regression);
         setFuturePredictions(responseData.future_predictions);
@@ -89,16 +82,27 @@ function AppContent() {
       .catch((error) => {
         if (error.name === 'AbortError') {
           console.log('🚫 API call was cancelled');
-          return; // Don't update state for cancelled requests
+          return;
         }
-        console.error('Fetch error:', error);
         setError(error.message);
         setLoading(false);
       });
   };
 
+  // useEffect for debounced data fetching
   useEffect(() => {
-    // Initialize appStartDate and appEndDate
+    const debounceTimeout = setTimeout(() => {
+      if (appStartDate && appEndDate && ticker) {
+        fetchData();
+      }
+    }, 800); // 800ms debounce delay
+
+    return () => clearTimeout(debounceTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appStartDate, appEndDate, ticker, futureDays]);
+
+  // Initial date setup
+  useEffect(() => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -111,45 +115,23 @@ function AppContent() {
     setAppEndDate(formatDate(yesterday));
   }, []);
 
-  // Initial data fetch when app dates are first initialized
-  const [isInitialized, setIsInitialized] = useState(false);
-  
-  useEffect(() => {
-    if (appStartDate && appEndDate && ticker && !isInitialized) {
-      console.log('🚀 Initial data fetch triggered');
-      setIsInitialized(true);
-      updateData('initial-load');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appStartDate, appEndDate, ticker, isInitialized]); // Only fetch on initial load
-
   const handleDateRangeChange = (newStartDate, newEndDate) => {
-    console.log('📅 Date range change:', { newStartDate, newEndDate });
     setAppStartDate(newStartDate);
     setAppEndDate(newEndDate);
-    // Use setTimeout to ensure state updates are applied before fetching
-    setTimeout(() => updateData('date-change'), 0);
   };
 
   const handleTickerChange = (newTicker) => {
-    console.log('🎯 Ticker change:', { newTicker });
     setTicker(newTicker);
-    // Use setTimeout to ensure state updates are applied before fetching
-    setTimeout(() => updateData('ticker-change'), 0);
   };
 
   const handleFutureDaysChange = (days) => {
-    console.log('🔮 Future days change:', { days });
     setFutureDays(days);
-    // Use setTimeout to ensure state updates are applied before fetching
-    setTimeout(() => updateData('future-days-change'), 0);
   };
 
-  // Cleanup function to cancel any pending API calls
+  // Cleanup function
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
-        console.log('🧹 Cleanup: Cancelling pending API call');
         abortControllerRef.current.abort();
       }
     };

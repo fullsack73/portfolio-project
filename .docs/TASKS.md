@@ -86,4 +86,22 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] **`stats` NameError:** Fixed missing import for lightweight forecasting.
 - [x] **Batch Fetching Regression:** Corrected handling of yfinance MultiIndex DataFrames.
 - [ ] **Caching Performance:** Test caching system performance and hit ratios under load.
-- [ ] **Input Flow:** Final verification of user input flow after refactoring.
+- [x] **Input Flow:** Final verification of user input flow after refactoring.
+
+## Debouncing and API Call Optimization
+- [x] **Fix Request Spam:** Investigate and fix frontend request spamming issue by implementing proper debouncing.
+- [x] **Implement Debouncing:** Apply a robust debouncing mechanism to the `updateData` function in `App.jsx` to prevent excessive API calls.
+- [x] **Update Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to accurately reflect the new debouncing implementation.
+
+## Frontend Refactoring (Request Spam Fix)
+- [x] **Analyze Root Cause:** Identify why the previous debouncing implementation was ineffective.
+- [x] **Refactor State Management:** Change `App.jsx` to trigger data fetches from a `useEffect` hook that depends on input state variables (`ticker`, dates, etc.).
+- [x] **Centralize Fetch Logic:** Ensure all data fetch requests originate from a single, debounced `useEffect` to eliminate race conditions and redundant calls.
+- [x] **Remove Direct API Calls:** Eliminate direct calls to the data fetching function from event handlers (`handleTickerChange`, etc.).
+- [x] **Verify Fix:** Test the application to confirm that request spamming is resolved and data updates correctly on input changes.
+- [x] **Update Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to reflect the new, more robust data fetching architecture.
+
+## Debouncing and API Call Optimization
+- [x] **Fix Request Spam:** Investigate and fix frontend request spamming issue by implementing proper debouncing.
+- [x] **Implement Debouncing:** Apply a robust debouncing mechanism to the `updateData` function in `App.jsx` to prevent excessive API calls.
+- [x] **Update Documentation:** Update `DESIGN.md` and `REQUIREMENTS.md` to accurately reflect the new debouncing implementation.
