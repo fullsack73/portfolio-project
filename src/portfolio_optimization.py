@@ -96,7 +96,7 @@ def get_stock_data(tickers, start_date, end_date):
                     logger.info(f"GET_STOCK_DATA: Extracted Close data shape: {close_data.shape}")
         
         # Clean the data
-        close_data = close_data.fillna(method='ffill').dropna()
+        close_data = close_data.ffill().dropna()
         logger.info(f"GET_STOCK_DATA: Data cleaned, final shape: {close_data.shape}")
         
         # Ensure we have data
@@ -139,7 +139,7 @@ def get_stock_data(tickers, start_date, end_date):
                     individual_data[ticker] = data
         
         if individual_data:
-            final_data = pd.DataFrame(individual_data).fillna(method='ffill').dropna()
+            final_data = pd.DataFrame(individual_data).ffill().dropna()
             logger.info(f"GET_STOCK_DATA: Individual fallback successful for {len(final_data.columns)} tickers")
             return final_data
         else:
