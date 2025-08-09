@@ -65,19 +65,21 @@ This file outlines the tasks completed during the development of the portfolio a
 
 Implement a feature to search/screen for stocks based on financial ratio conditions.
 
-### Backend
+### Backend (Implementation via `finvizfinance`)
 
-- [ ] **Data Acquisition:**
-    - [ ] Investigate and implement a method to efficiently fetch or pre-calculate financial ratios (P/E, P/B, P/S, etc.) for all stocks in ticker group (S&P 500, Dow, custom).
-    - [ ] Consider creating a script to generate and store this data periodically if a live API is not feasible.
-- [ ] **API Endpoint:**
-    - [ ] Design and create a new API endpoint, e.g., `/api/stock-screener`.
-    - [ ] The endpoint should accept parameters for the ticker group (S&P 500, Dow, custom) and a set of filter conditions (e.g., `PBR < 2.5`, `PE > 10`).
+- [ ] **Dependency:**
+    - [ ] Add `finvizfinance` to `requirements.txt`.
+- [ ] **Screener Module:**
+    - [ ] Create a new file `src/stock_screener.py` to house the screening logic.
+    - [ ] In this file, create a function `search_stocks(filters)` that accepts filter criteria from the API.
+- [ ] **API Endpoint (`/api/stock-screener`):**
+    - [ ] In `app.py`, create the endpoint that receives search criteria from the frontend.
+    - [ ] The endpoint will call `stock_screener.search_stocks(filters)`.
 - [ ] **Filtering Logic:**
-    - [ ] Implement the core server-side logic to filter the stocks from the dataset based on the user-defined conditions.
-    - [ ] Handle multiple conditions combined with logical AND.
-- [ ] **Caching:**
-    - [ ] Integrate the screener data source with the existing caching mechanism (`cache_manager.py`) to ensure fast response times for repeated queries.
+    - [ ] The `search_stocks` function will translate the frontend criteria into the format required by `finvizfinance`.
+    - [ ] It will use `finvizfinance.screener.overview.Overview` to set the filters and execute the search.
+    - [ ] The function will handle potential errors if the external Finviz service is unavailable.
+    - [ ] The results (a pandas DataFrame) will be converted to JSON to be sent to the frontend.
 
 ### Frontend
 
@@ -100,3 +102,5 @@ Implement a feature to search/screen for stocks based on financial ratio conditi
         - [ ] Reuse "allocation-table" at 'Optimizer.jsx'.
     - [ ] Include the values of the metrics that were used in the filter conditions in the results display.
         - [ ] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
+    - [ ] Add a popup to show the metrics of the selected stock if mouse hovered.
+        - [ ] a simple table class to display metrics will have to do.
