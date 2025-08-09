@@ -104,3 +104,7 @@ Implement a feature to search/screen for stocks based on financial ratio conditi
         - [x] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
     - [x] Add a popup to show the metrics of the selected stock if mouse hovered.
         - [x] a simple table class to display metrics will have to do.
+- [ ] **Translation:**
+    - [ ] Fill out locale strings in `src/locales/en.json` and `src/locales/ko.json`.
+- [ ] **UI Modification:**
+    - [ ] Fix "filter-row" class being oversized.

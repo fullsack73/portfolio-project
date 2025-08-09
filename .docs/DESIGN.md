@@ -67,6 +67,7 @@ The server exposes several endpoints, each mapped to a specific function:
 -   `GET /portfolio-metrics`: Calculates portfolio metrics using a Monte Carlo simulation.
 -   `GET /financial-statement`: Retrieves key financial ratios for a single ticker.
 -   `POST /api/optimize-portfolio`: Runs advanced portfolio optimization using ML-based return forecasting by default.
+-   `POST /api/stock-screener`: Runs stock screener using financial ratios.
 
 ### 3.3. Modular Business Logic
 
@@ -77,6 +78,7 @@ The core business logic is decoupled from the API routes and organized into sepa
 -   **`financial_statement.py`**: Handles fetching and calculating financial ratios.
 -   **`portfolio_optimization.py`**: Implements advanced portfolio optimization using `PyPortfolioOpt`. It uses a time-series model (Prophet) by default to forecast expected returns.
 -   **`ticker_lists.py`**: Provides utility functions to get lists of tickers for major indices (S&P 500, Dow Jones) from local CSV files.
+-   **`stock_screener.py`**: Implements stock screener using financial ratios.
 
 -   **Ticker Sanitization**: A `sanitize_tickers` utility function automatically corrects common ticker formatting issues (e.g., converting `BRK.B` to `BRK-B`) to ensure compatibility with the `yfinance` API, fixing the root cause of many download failures.
 -   **Resilient Data Fetching**: The `get_stock_data` function is designed to be robust. It fetches data for each ticker individually and wraps the download call in a `try...except` block. If a ticker fails to download, the error is logged, and the ticker is skipped, allowing the analysis to proceed with the remaining valid assets.
@@ -118,7 +120,7 @@ This modularity makes the code easier to understand, maintain, and test.
 -   **yfinance**: For fetching historical market data from Yahoo Finance.
 -   **pandas**: For data manipulation and analysis.
 -   **NumPy**: For numerical operations, especially in financial calculations.
--g   **SciPy**: For scientific and technical computing, used here for optimization.
+-   **SciPy**: For scientific and technical computing, used here for optimization.
 -   **LightGBM / scikit-learn / Prophet**: For machine learning models (regression, time-series forecasting).
 -   **PyPortfolioOpt**: For advanced portfolio optimization and analysis.
 
