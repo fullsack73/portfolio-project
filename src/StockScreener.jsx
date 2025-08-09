@@ -1,19 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import './App.css'; 
+import './App.css';
 
 // Define available metrics and operators
 const METRICS = [
     'P/E',
     'P/B',
-    'P/S',
-    'Debt/Eq',
-    'EPS growth this year',
-    'EPS growth next year',
+    'Debt/Equity',
     'ROE',
-    'ROI',
+    'Price/Cash',
 ];
-const OPERATORS = ['Under', 'Over', 'High', 'Low', 'Avg', 'Unusual'];
+const OPERATORS = ['Under', 'Over', 'Avg'];
 
 const StockScreener = () => {
     const { t } = useTranslation();
@@ -25,6 +22,7 @@ const StockScreener = () => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [customTickers, setCustomTickers] = useState([]);
 
     const handleAddFilter = () => {
         setFilters([...filters, { metric: 'ROE', operator: 'Over', value: '15%' }]);
@@ -39,6 +37,19 @@ const StockScreener = () => {
             i === index ? { ...filter, [field]: value } : filter
         );
         setFilters(newFilters);
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const text = event.target.result;
+                const tickers = text.split('\n').map(t => t.trim()).filter(t => t);
+                setCustomTickers(tickers);
+            };
+            reader.readAsText(file);
+        }
     };
 
     const handleSearch = useCallback(async () => {
@@ -89,10 +100,11 @@ const StockScreener = () => {
                     <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)}>
                         <option value="S&P 500">S&P 500</option>
                         <option value="Dow Jones">Dow Jones</option>
-                        <option value="NASDAQ">NASDAQ</option>
-                        <option value="AMEX">AMEX</option>
-                        <option value="NYSE">NYSE</option>
+                        <option value="CUSTOM">Custom</option>
                     </select>
+                    {tickerGroup === 'CUSTOM' && (
+                        <input type="file" accept=".csv" onChange={handleFileUpload} />
+                    )}
                 </div>
 
                 {filters.map((filter, index) => (

@@ -38,11 +38,9 @@ prophet_logger.propagate = False
 
 def sanitize_tickers(tickers):
     """Sanitize ticker symbols for yfinance compatibility with special case handling."""
-    # Special mappings for problematic tickers
     special_mappings = {
         'BRK.B': 'BRK-B',
         'BF.B': 'BF-B',
-        # Add more special cases as needed
     }
     
     sanitized = []

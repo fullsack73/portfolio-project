@@ -712,10 +712,8 @@
 /* Stock screener styles */
 .stock-screener-container {
     padding: 20px;
-    background-color: #2c2c2c; /* Darker background for the container */
     border-radius: 8px;
     margin-top: 20px;
-    border: 1px solid #444;
 }
 
 .screener-controls {
@@ -740,11 +738,13 @@
 .filter-row select,
 .filter-row input,
 .optimizer-select {
-    padding: 8px;
-    border: 1px solid #555;
-    border-radius: 4px;
-    background-color: #333;
-    color: #f0f0f0;
+    width: 89%;
+    padding: 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .remove-btn {
