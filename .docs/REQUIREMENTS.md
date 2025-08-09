@@ -68,6 +68,9 @@ The application is a comprehensive financial analysis tool that provides the fol
     - Debt Ratio
     - Liquidity Ratio (Current Ratio)
   - Each metric is accompanied by a tooltip explaining its significance.
+- **4.3. Search Stocks:**
+  - User can search for stocks in given ticker group (or custom) in which it matches the user's input of financial ratio conditions.
+    - e.g. User can search for tickers that match 2.5 > PBR among S&P 500
 
 #### 5. Portfolio Optimizer (`optimizer` view)
 ### Portfolio Optimizer
