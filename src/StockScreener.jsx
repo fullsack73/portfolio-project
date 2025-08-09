@@ -8,7 +8,7 @@ const METRICS = [
     'P/B',
     'Debt/Equity',
     'ROE',
-    'Price/Cash',
+    'Price/Sales',
 ];
 const OPERATORS = ['Under', 'Over', 'Avg'];
 
