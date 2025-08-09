@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import StockScreener from './StockScreener'; // Import the new component
 
 const FinancialStatement = () => {
     const { t } = useTranslation();
@@ -80,6 +81,9 @@ const FinancialStatement = () => {
                     </div>
                 </div>
             )}
+
+            {/* Add the Stock Screener component below the existing content */}
+            <StockScreener />
         </div>
     );
 };

@@ -67,40 +67,40 @@ Implement a feature to search/screen for stocks based on financial ratio conditi
 
 ### Backend (Implementation via `finvizfinance`)
 
-- [ ] **Dependency:**
-    - [ ] Add `finvizfinance` to `requirements.txt`.
-- [ ] **Screener Module:**
-    - [ ] Create a new file `src/stock_screener.py` to house the screening logic.
-    - [ ] In this file, create a function `search_stocks(filters)` that accepts filter criteria from the API.
-- [ ] **API Endpoint (`/api/stock-screener`):**
-    - [ ] In `app.py`, create the endpoint that receives search criteria from the frontend.
-    - [ ] The endpoint will call `stock_screener.search_stocks(filters)`.
-- [ ] **Filtering Logic:**
-    - [ ] The `search_stocks` function will translate the frontend criteria into the format required by `finvizfinance`.
-    - [ ] It will use `finvizfinance.screener.overview.Overview` to set the filters and execute the search.
-    - [ ] The function will handle potential errors if the external Finviz service is unavailable.
-    - [ ] The results (a pandas DataFrame) will be converted to JSON to be sent to the frontend.
+- [x] **Dependency:**
+    - [x] Add `finvizfinance` to `requirements.txt`.
+- [x] **Screener Module:**
+    - [x] Create a new file `src/stock_screener.py` to house the screening logic.
+    - [x] In this file, create a function `search_stocks(filters)` that accepts filter criteria from the API.
+- [x] **API Endpoint (`/api/stock-screener`):**
+    - [x] In `app.py`, create the endpoint that receives search criteria from the frontend.
+    - [x] The endpoint will call `stock_screener.search_stocks(filters)`.
+- [x] **Filtering Logic:**
+    - [x] The `search_stocks` function will translate the frontend criteria into the format required by `finvizfinance`.
+    - [x] It will use `finvizfinance.screener.overview.Overview` to set the filters and execute the search.
+    - [x] The function will handle potential errors if the external Finviz service is unavailable.
+    - [x] The results (a pandas DataFrame) will be converted to JSON to be sent to the frontend.
 
 ### Frontend
 
-- [ ] **UI Component (`StockScreener.jsx`):**
-    - [ ] Create a new parent component to house the feature.
-    - [ ] Integrate this component into the `FinancialStatement.jsx` view.
-- [ ] **Input Controls:**
-    - [ ] Add a selector for the Ticker Group (S&P 500, Dow, Custom List). Can reuse "optimizer-select" at 'Optimizer.jsx'.
-    - [ ] Design and build a dynamic form for adding/removing filter conditions. Each condition row should have:
+- [x] **UI Component (`StockScreener.jsx`):**
+    - [x] Create a new parent component to house the feature.
+    - [x] Integrate this component into the `FinancialStatement.jsx` view.
+- [x] **Input Controls:**
+    - [x] Add a selector for the Ticker Group (S&P 500, Dow, Custom List). Can reuse "optimizer-select" at 'Optimizer.jsx'.
+    - [x] Design and build a dynamic form for adding/removing filter conditions. Each condition row should have:
         - A dropdown for the financial metric (P/E, P/B, etc.).
         - A dropdown for the operator (>, <, =).
         - A number input for the value.
-- [ ] **State Management:**
-    - [ ] Use React hooks (`useState`, `useReducer`) to manage the state of the ticker group, custom tickers, filter conditions, and search results.
-- [ ] **API Integration:**
-    - [ ] Implement the client-side logic to call the new `/api/stock-screener` endpoint when the user submits the form.
-    - [ ] Handle loading and error states during the API call.
-- [ ] **Results Display:**
-    - [ ] Create a component to display the list of matching stock tickers in a clear, readable table or list format.
-        - [ ] Reuse "allocation-table" at 'Optimizer.jsx'.
-    - [ ] Include the values of the metrics that were used in the filter conditions in the results display.
-        - [ ] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
-    - [ ] Add a popup to show the metrics of the selected stock if mouse hovered.
-        - [ ] a simple table class to display metrics will have to do.
+- [x] **State Management:**
+    - [x] Use React hooks (`useState`, `useReducer`) to manage the state of the ticker group, custom tickers, filter conditions, and search results.
+- [x] **API Integration:**
+    - [x] Implement the client-side logic to call the new `/api/stock-screener` endpoint when the user submits the form.
+    - [x] Handle loading and error states during the API call.
+- [x] **Results Display:**
+    - [x] Create a component to display the list of matching stock tickers in a clear, readable table or list format.
+        - [x] Reuse "allocation-table" at 'Optimizer.jsx'.
+    - [x] Include the values of the metrics that were used in the filter conditions in the results display.
+        - [x] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
+    - [x] Add a popup to show the metrics of the selected stock if mouse hovered.
+        - [x] a simple table class to display metrics will have to do.

@@ -12,6 +12,7 @@ import psutil
 from financial_statement import get_financial_ratios
 from portfolio_optimization import optimize_portfolio
 from ticker_lists import get_ticker_group
+from stock_screener import search_stocks
 
 
 app = Flask(__name__)
@@ -310,6 +311,29 @@ def optimize_portfolio_endpoint():
         return jsonify({'error': str(ve)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/stock-screener', methods=['POST'])
+def stock_screener_endpoint():
+    """
+    API endpoint to screen for stocks based on a set of filters.
+    Expects a JSON body with a 'filters' key, which is a dictionary
+    of filter criteria for finvizfinance.
+    """
+    data = request.get_json()
+    if not data or 'filters' not in data:
+        return jsonify({"error": "Request must be JSON and contain a 'filters' key"}), 400
+
+    filters = data.get('filters')
+    if not isinstance(filters, dict):
+        return jsonify({"error": "'filters' must be a dictionary"}), 400
+
+    try:
+        results = search_stocks(filters)
+        return jsonify(results)
+    except Exception as e:
+        # Log the exception for debugging
+        app.logger.error(f"Stock screener failed with exception: {e}")
+        return jsonify({"error": "An internal error occurred while screening stocks."}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
