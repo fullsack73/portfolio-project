@@ -41,16 +41,6 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
                         {t('navigation.hedge')}
                     </button>
                     <button 
-                        className={`nav-item ${activeView === 'portfolio' ? 'active' : ''}`}
-                        onClick={() => {
-                            onViewChange('portfolio');
-                            onToggle();
-                        }}
-                    >
-                        <span className="icon">📊</span>
-                        {t('navigation.portfolio')}
-                    </button>
-                    <button 
                         className={`nav-item ${activeView === 'financial' ? 'active' : ''}`}
                         onClick={() => {
                             onViewChange('financial');

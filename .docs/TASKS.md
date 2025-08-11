@@ -44,6 +44,15 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] Corrected data handling for `yfinance` MultiIndex DataFrames.
 - [x] Fixed flat line issue in the regression forecast graph.
 
+### Stock Screener Feature
+- [x] **Backend:** Implement `finvizfinance`-based stock screener with a dedicated API endpoint.
+- [x] **Screener Module:** Create `stock_screener.py` for screening logic and filter translation.
+- [x] **Frontend:** Develop `StockScreener.jsx` component with dynamic filter controls.
+- [x] **State & API:** Manage state with hooks and integrate with the backend screener API.
+- [x] **Results Display:** Show screener results in a table and include metric values.
+- [x] **Save Results:** Add a button to save screener results to a CSV file.
+- [x] **i18n & UI:** Add translations and fix UI styling issues.
+
 ### Documentation
 - [x] Create `README.md`, `REQUIREMENTS.md`, `DESIGN.md`, and `TASKS.md`.
 - [x] Keep documentation updated with new features and architectural changes.
@@ -61,11 +70,16 @@ This file outlines the tasks completed during the development of the portfolio a
 - [ ] Optimized data structures and predictive prefetching.
 - [ ] Load test caching system and analyze hit ratios.
 
-### Stock Screener Feature
-- [x] **Backend:** Implement `finvizfinance`-based stock screener with a dedicated API endpoint.
-- [x] **Screener Module:** Create `stock_screener.py` for screening logic and filter translation.
-- [x] **Frontend:** Develop `StockScreener.jsx` component with dynamic filter controls.
-- [x] **State & API:** Manage state with hooks and integrate with the backend screener API.
-- [x] **Results Display:** Show screener results in a table and include metric values.
-- [x] **Save Results:** Add a button to save screener results to a CSV file.
-- [x] **i18n & UI:** Add translations and fix UI styling issues.
+## Planed Refactoring
+
+Object of the refactoring is to remove deprecated "Portfolio Analysis" feature, and it's related components and instances.
+Thus making the project lighweight and more clean.
+
+- [ ] **Frontend:** Remove components and designs, instances that are related to "Portfolio Analysis" feature
+    - [X] Remove "Portfolio Analysis" tab in the navigation bar
+    - [X] Remove components that are related to "Portfolio Analysis" feature
+    - [ ] Remove API calls that are related to "Portfolio Analysis" feature
+    - [X] Remove translation keys and instances that are related to "Portfolio Analysis" feature
+- [ ] **Backend:** Remove "Portfolio Analysis" related API calls and related files
+    - [ ] Remove "montecarlo.py" and all instances that calling it
+    

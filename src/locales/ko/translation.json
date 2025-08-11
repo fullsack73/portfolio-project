@@ -2,7 +2,6 @@
   "navigation": {
     "stock": "주식 데이터",
     "hedge": "헷지 분석",
-    "portfolio": "포트폴리오 분석",
     "financial": "재무제표 분석",
     "optimizer": "포트폴리오 최적화"
   },
@@ -42,20 +41,6 @@
     "dateRange": "날짜 범위",
     "start": "시작 날짜",
     "end": "종료 날짜"
-  },
-  "portfolio": {
-    "title": "포트폴리오 분석",
-    "tickers": "티커",
-    "risklessRate": "무위험 금리",
-    "optimization": {
-      "title": "포트폴리오 최적화",
-      "description": "주식 티커와 날짜 범위를 입력하여 샤프 비율(위험 조정 수익률)을 최대화하는 최적의 포트폴리오 비중을 찾으세요."
-    },
-    "results": "포트폴리오 분석 결과",
-    "weights": "최적 자산 분배 비율",
-    "expectedReturn": "예상 수익률",
-    "portfolioRisk": "포트폴리오 위험도",
-    "sharpeRatio": "샤프 비율"
   },
   "ticker": {
     "label": "주식 심볼 입력",
