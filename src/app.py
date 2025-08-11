@@ -5,7 +5,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
 from hedge_analysis import analyze_hedge_relationship
-from montecarlo import calculate_portfolio_metrics, prepare_portfolio_data
+
 import lightgbm as lgb
 import pandas as pd
 import psutil
@@ -240,36 +240,7 @@ def analyze_hedge():
     result = analyze_hedge_relationship(ticker1, ticker2, start_date, end_date)
     return jsonify(result)
 
-# endpoint for portfolio metrics. keeping files seperated. it's fucking spagetti code otherwise.
-@app.route('/portfolio-metrics', methods=['GET', 'OPTIONS'])
-def get_portfolio_metrics():
-    # get parameters from request
-    tickers = request.args.get('tickers', '').split(',')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    riskless_rate = request.args.get('riskless_rate', default=0.0, type=float)
 
-    if not tickers or tickers[0] == '':
-        return jsonify({'error': 'At least one ticker is required'}), 400
-
-    try:
-        # calculate portfolio metrics.
-        optimal_portfolio, final_ret, final_vol, final_sharpe, opts, optv, rets = calculate_portfolio_metrics(tickers, start_date, end_date, riskless_rate)
-        portfolio_data = prepare_portfolio_data(opts, optv, rets, riskless_rate)
-
-        print("Optimal portfolio weights:", optimal_portfolio) # This will now print the ticker and weight
-        
-        data = {
-            'final_weights': optimal_portfolio,
-            'final_return': final_ret,
-            'final_volatility': final_vol,
-            'final_sharpe_ratio': final_sharpe,
-            'data': portfolio_data
-        }
-
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/financial-statement', methods=['GET'])
 def financial_statement():
