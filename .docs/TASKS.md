@@ -61,49 +61,11 @@ This file outlines the tasks completed during the development of the portfolio a
 - [ ] Optimized data structures and predictive prefetching.
 - [ ] Load test caching system and analyze hit ratios.
 
-## 🆕 Stock Screener Feature (Requirement 4.3)
-
-Implement a feature to search/screen for stocks based on financial ratio conditions.
-
-### Backend (Implementation via `finvizfinance`)
-
-- [x] **Dependency:**
-    - [x] Add `finvizfinance` to `requirements.txt`.
-- [x] **Screener Module:**
-    - [x] Create a new file `src/stock_screener.py` to house the screening logic.
-    - [x] In this file, create a function `search_stocks(filters)` that accepts filter criteria from the API.
-- [x] **API Endpoint (`/api/stock-screener`):**
-    - [x] In `app.py`, create the endpoint that receives search criteria from the frontend.
-    - [x] The endpoint will call `stock_screener.search_stocks(filters)`.
-- [x] **Filtering Logic:**
-    - [x] The `search_stocks` function will translate the frontend criteria into the format required by `finvizfinance`.
-    - [x] It will use `finvizfinance.screener.overview.Overview` to set the filters and execute the search.
-    - [x] The function will handle potential errors if the external Finviz service is unavailable.
-    - [x] The results (a pandas DataFrame) will be converted to JSON to be sent to the frontend.
-
-### Frontend
-
-- [x] **UI Component (`StockScreener.jsx`):**
-    - [x] Create a new parent component to house the feature.
-    - [x] Integrate this component into the `FinancialStatement.jsx` view.
-- [x] **Input Controls:**
-    - [x] Add a selector for the Ticker Group (S&P 500, Dow, Custom List). Can reuse "optimizer-select" at 'Optimizer.jsx'.
-    - [x] Design and build a dynamic form for adding/removing filter conditions. Each condition row should have:
-        - A dropdown for the financial metric (P/E, P/B, etc.).
-        - A dropdown for the operator (>, <, =).
-        - A number input for the value.
-- [x] **State Management:**
-    - [x] Use React hooks (`useState`, `useReducer`) to manage the state of the ticker group, custom tickers, filter conditions, and search results.
-- [x] **API Integration:**
-    - [x] Implement the client-side logic to call the new `/api/stock-screener` endpoint when the user submits the form.
-    - [x] Handle loading and error states during the API call.
-- [x] **Results Display:**
-    - [x] Create a component to display the list of matching stock tickers in a clear, readable table or list format.
-        - [x] Reuse "allocation-table" at 'Optimizer.jsx'.
-    - [x] Include the values of the metrics that were used in the filter conditions in the results display.
-        - [x] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
-    - [ ] Add a "save" button to save the results to a CSV file.
-- [x] **Translation:**
-    - [x] Fill out locale strings in `src/locales/en/translation.json` and `src/locales/ko/translation.json`.
-- [x] **UI Modification:**
-    - [x] Fix "filter-row" class being oversized.
+### Stock Screener Feature
+- [x] **Backend:** Implement `finvizfinance`-based stock screener with a dedicated API endpoint.
+- [x] **Screener Module:** Create `stock_screener.py` for screening logic and filter translation.
+- [x] **Frontend:** Develop `StockScreener.jsx` component with dynamic filter controls.
+- [x] **State & API:** Manage state with hooks and integrate with the backend screener API.
+- [x] **Results Display:** Show screener results in a table and include metric values.
+- [x] **Save Results:** Add a button to save screener results to a CSV file.
+- [x] **i18n & UI:** Add translations and fix UI styling issues.

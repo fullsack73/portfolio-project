@@ -91,8 +91,8 @@ const StockScreener = () => {
     }, [filters, tickerGroup]);
 
     const handleDownloadCSV = () => {
-        const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(JSON.stringify(results));
-        const encodedUri = encodeURI(csvContent);
+        const csvData = 'Symbol\n' + results.map(item => item.Ticker).join('\n');
+        const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData);
         const link = document.createElement('a');
         link.setAttribute('href', encodedUri);
         link.setAttribute('download', 'stock-screener-results.csv');
