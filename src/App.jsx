@@ -7,7 +7,6 @@ import TickerInput from "./TickerInput.jsx";
 import RegressionChart from "./RegressionChart.jsx";
 import Selector from './Selector.jsx';
 import HedgeAnalysis from './Hedge.jsx';
-import PortfolioInput from './PortfolioInput.jsx';
 import LanguageSelector from './LanguageSelector.jsx';
 import FutureDateInput from './FutureDateInput.jsx';
 import FutureChart from './FutureChart.jsx';
