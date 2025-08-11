@@ -92,15 +92,15 @@ const StockScreener = () => {
 
     return (
         <div className="stock-screener-container card">
-            <h3 className="card-header">{t('stock_screener')}</h3>
+            <h3 className="card-header">{t('stockScreener.stock_screener')}</h3>
             
             <div className="screener-controls">
                 <div className="control-group">
-                    <label>{t('ticker_group')}</label>
+                    <label>{t('stockScreener.ticker_group')}</label>
                     <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)}>
                         <option value="S&P 500">S&P 500</option>
                         <option value="Dow Jones">Dow Jones</option>
-                        <option value="CUSTOM">Custom</option>
+                        <option value="CUSTOM">{t('optimizer.custom')}</option>
                     </select>
                     {tickerGroup === 'CUSTOM' && (
                         <input type="file" accept=".csv" onChange={handleFileUpload} />
@@ -119,7 +119,7 @@ const StockScreener = () => {
                             value={filter.operator} 
                             onChange={(e) => handleFilterChange(index, 'operator', e.target.value)}
                         >
-                            {OPERATORS.map(o => <option key={o} value={o}>{o}</option>)}
+                            {OPERATORS.map(o => <option key={o} value={o}>{t('stockScreener.' + o)}</option>)}
                         </select>
                         <input 
                             type="text" 
@@ -131,9 +131,9 @@ const StockScreener = () => {
                     </div>
                 ))}
                 <div className="action-buttons">
-                    <button onClick={handleAddFilter}>{t('add_filter')}</button>
+                    <button onClick={handleAddFilter}>{t('stockScreener.add_filter')}</button>
                     <button onClick={handleSearch} disabled={loading}>
-                        {loading ? t('loading') : t('search')}
+                        {loading ? t('stockScreener.loading') : t('stockScreener.search')}
                     </button>
                 </div>
             </div>
@@ -142,7 +142,7 @@ const StockScreener = () => {
 
             {results.length > 0 && (
                 <div className="results-container">
-                    <h4>{t('screener_results')}</h4>
+                    <h4>{t('stockScreener.screener_results')}</h4>
                     <table className="allocation-table">
                         <thead>
                             <tr>

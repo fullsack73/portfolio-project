@@ -101,6 +101,18 @@
     "allocationResults": "Allocation Results",
     "ticker": "Ticker",
     "investmentAmount": "Investment Amount",
-    "shares": "Shares"
+    "shares": "Shares",
+    "custom": "Custom"
+  },
+  "stockScreener": {
+    "stock_screener": "Stock Screener",
+    "ticker_group": "Ticker Group",
+    "add_filter": "Add Filter",
+    "search": "Search",
+    "loading": "Loading...",
+    "screener_results": "Screener Results",
+    "Under": "Under",
+    "Over": "Over",
+    "Avg": "Avg"
   }
 }

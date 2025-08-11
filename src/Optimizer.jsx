@@ -84,7 +84,7 @@ const Optimizer = () => {
                         <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)} required>
                             <option value="SP500">S&P 500</option>
                             <option value="DOW">Dow Jones</option>
-                            <option value="CUSTOM">Custom</option>
+                            <option value="CUSTOM">{t('optimizer.custom')}</option>
                         </select>
                         {tickerGroup === 'CUSTOM' && (
                             <input type="file" accept=".csv" onChange={handleFileUpload} />

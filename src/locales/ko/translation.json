@@ -101,6 +101,18 @@
     "allocationResults": "배분 결과",
     "ticker": "티커",
     "investmentAmount": "투자 금액",
-    "shares": "주식 수"
+    "shares": "주식 수",
+    "custom": "사용자 지정"
+  },
+  "stockScreener": {
+    "stock_screener": "주식 찾기",
+    "ticker_group": "티커 그룹",
+    "add_filter": "필터 추가",
+    "search": "검색",
+    "loading": "로딩 중...",
+    "screener_results": "검색 결과",
+    "Under": "미만",
+    "Over": "초과",
+    "Avg": "평균"
   }
 }

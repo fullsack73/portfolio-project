@@ -103,7 +103,7 @@ Implement a feature to search/screen for stocks based on financial ratio conditi
     - [x] Include the values of the metrics that were used in the filter conditions in the results display.
         - [x] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
     - [ ] Add a "save" button to save the results to a CSV file.
-- [ ] **Translation:**
-    - [ ] Fill out locale strings in `src/locales/en.json` and `src/locales/ko.json`.
+- [x] **Translation:**
+    - [x] Fill out locale strings in `src/locales/en/translation.json` and `src/locales/ko/translation.json`.
 - [ ] **UI Modification:**
     - [ ] Fix "filter-row" class being oversized.
