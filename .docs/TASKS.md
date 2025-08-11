@@ -105,5 +105,5 @@ Implement a feature to search/screen for stocks based on financial ratio conditi
     - [ ] Add a "save" button to save the results to a CSV file.
 - [x] **Translation:**
     - [x] Fill out locale strings in `src/locales/en/translation.json` and `src/locales/ko/translation.json`.
-- [ ] **UI Modification:**
-    - [ ] Fix "filter-row" class being oversized.
+- [x] **UI Modification:**
+    - [x] Fix "filter-row" class being oversized.

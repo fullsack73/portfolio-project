@@ -106,9 +106,9 @@
   },
   "stockScreener": {
     "stock_screener": "주식 찾기",
-    "ticker_group": "티커 그룹",
     "add_filter": "필터 추가",
     "search": "검색",
+    "download_csv": "저장",
     "loading": "로딩 중...",
     "screener_results": "검색 결과",
     "Under": "미만",

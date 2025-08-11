@@ -90,13 +90,23 @@ const StockScreener = () => {
         }
     }, [filters, tickerGroup]);
 
+    const handleDownloadCSV = () => {
+        const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(JSON.stringify(results));
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'stock-screener-results.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="stock-screener-container card">
             <h3 className="card-header">{t('stockScreener.stock_screener')}</h3>
             
             <div className="screener-controls">
                 <div className="control-group">
-                    <label>{t('stockScreener.ticker_group')}</label>
                     <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)}>
                         <option value="S&P 500">S&P 500</option>
                         <option value="Dow Jones">Dow Jones</option>
@@ -141,23 +151,27 @@ const StockScreener = () => {
             {error && <div className="error-message">{error}</div>}
 
             {results.length > 0 && (
-                <div className="results-container">
-                    <h4>{t('stockScreener.screener_results')}</h4>
-                    <table className="allocation-table">
-                        <thead>
-                            <tr>
-                                {Object.keys(results[0]).map(key => <th key={key}>{key}</th>)}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {results.map((row, index) => (
-                                <tr key={index}>
-                                    {Object.values(row).map((val, i) => <td key={i}>{val}</td>)}
+                <div>
+                    <div className="results-container">
+                        <h4>{t('stockScreener.screener_results')}</h4>
+                        <table className="allocation-table">
+                            <thead>
+                                <tr>
+                                    {Object.keys(results[0]).map(key => <th key={key}>{key}</th>)}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {results.map((row, index) => (
+                                    <tr key={index}>
+                                        {Object.values(row).map((val, i) => <td key={i}>{val}</td>)}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button className="download-btn" onClick={handleDownloadCSV}>{t('stockScreener.download_csv')}</button>
                 </div>
+                
             )}
         </div>
     );
