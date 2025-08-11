@@ -102,8 +102,7 @@ Implement a feature to search/screen for stocks based on financial ratio conditi
         - [x] Reuse "allocation-table" at 'Optimizer.jsx'.
     - [x] Include the values of the metrics that were used in the filter conditions in the results display.
         - [x] Reuse "optimizer-results-grid" and "optimizer-result-card" at 'Optimizer.jsx'.
-    - [x] Add a popup to show the metrics of the selected stock if mouse hovered.
-        - [x] a simple table class to display metrics will have to do.
+    - [ ] Add a "save" button to save the results to a CSV file.
 - [ ] **Translation:**
     - [ ] Fill out locale strings in `src/locales/en.json` and `src/locales/ko.json`.
 - [ ] **UI Modification:**
