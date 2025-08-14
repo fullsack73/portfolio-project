@@ -453,15 +453,20 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     latest_prices = {}
     if final_weights:
         final_tickers = list(final_weights.keys())
-        price_data = yf.download(final_tickers, period='1d', auto_adjust=True)['Close']
-        if not price_data.empty:
-            for ticker in final_tickers:
-                if ticker in price_data:
-                    # Ensure we get a single price, even if only one ticker is requested
-                    if len(final_tickers) == 1:
-                        latest_prices[ticker] = price_data.iloc[-1]
-                    else:
-                        latest_prices[ticker] = price_data[ticker].iloc[-1]
+        logger.info(f"Fetching latest prices for {len(final_tickers)} final tickers.")
+
+        for ticker in final_tickers:
+            try:
+                ticker_obj = yf.Ticker(ticker)
+                # Fetching history for the last 2 days to get the most recent closing price
+                hist = ticker_obj.history(period="2d", auto_adjust=True)
+                if not hist.empty and 'Close' in hist.columns:
+                    latest_prices[ticker] = hist['Close'].iloc[-1]
+                    logger.info(f"Successfully fetched latest price for {ticker}: {latest_prices[ticker]:.2f}")
+                else:
+                    logger.warning(f"Could not retrieve latest price for {ticker}. It might be delisted or data is unavailable.")
+            except Exception as e:
+                logger.error(f"An error occurred while fetching the latest price for {ticker}: {e}")
 
 
     return {

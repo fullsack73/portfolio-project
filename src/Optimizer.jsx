@@ -67,9 +67,16 @@ const Optimizer = () => {
             }
 
             const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', payload);
-            setOptimizedPortfolio(response.data);
+
+            if (response.data.error) {
+                setError(response.data.error);
+                setOptimizedPortfolio(null);
+            } else {
+                setOptimizedPortfolio(response.data);
+            }
         } catch (err) {
             setError(err.response ? err.response.data.error : 'An error occurred');
+            setOptimizedPortfolio(null);
         }
         setLoading(false);
     };
