@@ -73,3 +73,15 @@ This file outlines the tasks completed during the development of the portfolio a
         - [ ] Implement GPU-based covariance matrix calculations.
 - [ ] Optimized data structures and predictive prefetching.
 - [ ] Load test caching system and analyze hit ratios.
+
+## Replacing Prophet
+- [ ] Research and find alternative model for Prophet, enhancing the accuracy of the forecast at the cost of speed
+- [ ] Consider replacing `_exponential_smoothing_forecast`, `_linear_trend_forecast` and `_historical_volatility_adjusted_forecast` with other models as well
+- **Candadates:**
+    - [ ] ARIMA
+    - [ ] LSTM
+    - [ ] SARIMAX
+    - [ ] Fedot
+    - [ ] AutoTS
+    - [ ] Gradient Boosting Models(XGBoost, LightGBM, CatBoost)
+    
