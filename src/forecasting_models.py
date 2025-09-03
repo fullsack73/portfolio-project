@@ -12,6 +12,10 @@ from datetime import datetime
 from typing import Dict, Optional, Tuple, Any, List
 import pandas as pd
 import numpy as np
+from forecasting_error_handler import (
+    ForecastingErrorHandler, DataQualityValidator, ErrorContext, 
+    ErrorCategory, ErrorSeverity, robust_forecasting_wrapper
+)
 
 
 # Configure logging for forecasting module
@@ -88,6 +92,13 @@ class BaseForecaster(ABC):
         self._model = None
         self._training_data = None
         
+        # Initialize error handling components
+        self.error_handler = ForecastingErrorHandler()
+        self.data_validator = DataQualityValidator()
+        self._last_error = None
+        self._error_count = 0
+        self._max_retries = 3
+        
     @abstractmethod
     def fit(self, data: pd.Series, exog: Optional[pd.DataFrame] = None) -> None:
         """
@@ -151,28 +162,65 @@ class BaseForecaster(ABC):
             'model_type': self.__class__.__name__
         }
     
-    def _validate_data(self, data: pd.Series, min_points: int = 100) -> None:
+    def _validate_data(self, data: pd.Series, min_points: int = 100, ticker: str = "unknown") -> pd.Series:
         """
-        Validate input data for training or prediction.
+        Validate and clean input data for training or prediction.
         
         Args:
             data: Time series data to validate
             min_points: Minimum number of data points required
+            ticker: Ticker symbol for context
+            
+        Returns:
+            Cleaned and validated data
             
         Raises:
-            ValueError: If data is invalid or insufficient
+            ValueError: If data is invalid or insufficient after cleaning
         """
-        if data is None or data.empty:
-            raise ValueError("Data cannot be None or empty")
-        
-        if len(data) < min_points:
-            raise ValueError(f"Insufficient data points. Required: {min_points}, Got: {len(data)}")
-        
-        if data.isnull().any():
-            self.logger.warning("Data contains null values, consider preprocessing")
-        
-        if not isinstance(data.index, pd.DatetimeIndex):
-            self.logger.warning("Data index is not DatetimeIndex, time series operations may be affected")
+        try:
+            # Use comprehensive data quality validation
+            is_valid, issues = self.data_validator.validate_data(data, ticker, min_points)
+            
+            if not is_valid:
+                # Attempt to clean the data
+                self.logger.warning(f"Data quality issues detected for {ticker}: {'; '.join(issues)}")
+                cleaned_data = self.data_validator.clean_data(data, ticker)
+                
+                # Re-validate cleaned data
+                is_valid_after_cleaning, remaining_issues = self.data_validator.validate_data(
+                    cleaned_data, ticker, min_points
+                )
+                
+                if not is_valid_after_cleaning:
+                    # Create error context for handling
+                    context = ErrorContext(
+                        ticker=ticker,
+                        model_name=self.model_name,
+                        operation="data_validation",
+                        data_points=len(data) if data is not None else 0,
+                        timestamp=datetime.now(),
+                        additional_info={'issues': remaining_issues}
+                    )
+                    
+                    # Handle the error
+                    error = ValueError(f"Data validation failed: {'; '.join(remaining_issues)}")
+                    recovery_successful, recovery_result = self.error_handler.handle_error(
+                        error, context, ErrorCategory.DATA_QUALITY, ErrorSeverity.HIGH
+                    )
+                    
+                    if not recovery_successful:
+                        raise error
+                    
+                    # If recovery was successful, use the cleaned data anyway
+                    self.logger.warning(f"Using cleaned data despite remaining issues for {ticker}")
+                
+                return cleaned_data
+            
+            return data
+            
+        except Exception as e:
+            self.logger.error(f"Data validation failed for {ticker}: {e}")
+            raise ValueError(f"Data validation failed: {str(e)}")
     
     def _log_performance(self, performance: ModelPerformance) -> None:
         """
@@ -186,6 +234,183 @@ class BaseForecaster(ABC):
             f"MAPE: {performance.mape:.4f}, MAE: {performance.mae:.4f}, "
             f"Training Time: {performance.training_time:.2f}s"
         )
+    
+    def _handle_model_error(self, 
+                           error: Exception, 
+                           operation: str, 
+                           ticker: str = "unknown",
+                           severity: ErrorSeverity = ErrorSeverity.MEDIUM) -> Tuple[bool, Any]:
+        """
+        Handle model-specific errors with recovery strategies.
+        
+        Args:
+            error: The exception that occurred
+            operation: The operation that failed (fit, predict, validate)
+            ticker: Ticker symbol for context
+            severity: Error severity level
+            
+        Returns:
+            Tuple of (recovery_successful, recovery_result)
+        """
+        # Create error context
+        context = ErrorContext(
+            ticker=ticker,
+            model_name=self.model_name,
+            operation=operation,
+            data_points=len(self._training_data) if self._training_data is not None else 0,
+            timestamp=datetime.now(),
+            additional_info={
+                'is_fitted': self.is_fitted,
+                'error_count': self._error_count,
+                'last_error': str(self._last_error) if self._last_error else None
+            }
+        )
+        
+        # Determine error category based on operation
+        if operation == 'fit':
+            category = ErrorCategory.MODEL_TRAINING
+        elif operation == 'predict':
+            category = ErrorCategory.MODEL_PREDICTION
+        elif operation == 'validate':
+            category = ErrorCategory.VALIDATION
+        else:
+            category = ErrorCategory.MODEL_TRAINING
+        
+        # Handle the error
+        recovery_successful, recovery_result = self.error_handler.handle_error(
+            error, context, category, severity
+        )
+        
+        # Update error tracking
+        self._last_error = error
+        self._error_count += 1
+        
+        return recovery_successful, recovery_result
+    
+    def _safe_fit(self, data: pd.Series, exog: Optional[pd.DataFrame] = None, ticker: str = "unknown") -> bool:
+        """
+        Safely fit the model with error handling and retries.
+        
+        Args:
+            data: Time series data for training
+            exog: Optional exogenous variables
+            ticker: Ticker symbol for context
+            
+        Returns:
+            True if fitting was successful, False otherwise
+        """
+        for attempt in range(self._max_retries):
+            try:
+                # Validate and clean data
+                clean_data = self._validate_data(data, ticker=ticker)
+                
+                # Call the actual fit method
+                self.fit(clean_data, exog)
+                return True
+                
+            except Exception as e:
+                self.logger.warning(f"Fit attempt {attempt + 1} failed for {self.model_name} on {ticker}: {e}")
+                
+                if attempt < self._max_retries - 1:
+                    # Try error recovery
+                    recovery_successful, recovery_result = self._handle_model_error(
+                        e, 'fit', ticker, ErrorSeverity.MEDIUM
+                    )
+                    
+                    if recovery_successful:
+                        continue
+                else:
+                    # Final attempt failed
+                    self._handle_model_error(e, 'fit', ticker, ErrorSeverity.HIGH)
+                    return False
+        
+        return False
+    
+    def _safe_predict(self, periods: int, exog: Optional[pd.DataFrame] = None, ticker: str = "unknown") -> Optional[float]:
+        """
+        Safely generate predictions with error handling.
+        
+        Args:
+            periods: Number of periods to forecast
+            exog: Optional exogenous variables
+            ticker: Ticker symbol for context
+            
+        Returns:
+            Prediction value or None if prediction fails
+        """
+        if not self.is_fitted:
+            self.logger.error(f"Model {self.model_name} is not fitted for prediction on {ticker}")
+            return None
+        
+        try:
+            # Call the actual predict method
+            prediction = self.predict(periods, exog)
+            
+            # Validate prediction
+            if prediction is None or np.isnan(prediction) or np.isinf(prediction):
+                raise ValueError(f"Invalid prediction value: {prediction}")
+            
+            return float(prediction)
+            
+        except Exception as e:
+            self.logger.error(f"Prediction failed for {self.model_name} on {ticker}: {e}")
+            
+            # Handle prediction error
+            recovery_successful, recovery_result = self._handle_model_error(
+                e, 'predict', ticker, ErrorSeverity.HIGH
+            )
+            
+            if recovery_successful and isinstance(recovery_result, (int, float)):
+                return float(recovery_result)
+            
+            return None
+    
+    def _get_fallback_prediction(self, ticker: str = "unknown") -> float:
+        """
+        Get a fallback prediction when the model fails.
+        
+        Args:
+            ticker: Ticker symbol for context
+            
+        Returns:
+            Fallback prediction value
+        """
+        try:
+            if self._training_data is not None and not self._training_data.empty:
+                # Use recent historical mean as fallback
+                recent_data = self._training_data.tail(min(60, len(self._training_data)))
+                fallback_value = float(recent_data.mean())
+                
+                self.logger.warning(f"Using fallback prediction for {ticker}: {fallback_value:.6f}")
+                return fallback_value
+            else:
+                # Ultimate fallback
+                self.logger.warning(f"Using ultimate fallback prediction for {ticker}: 0.05")
+                return 0.05
+                
+        except Exception as e:
+            self.logger.error(f"Fallback prediction failed for {ticker}: {e}")
+            return 0.05  # Conservative default return
+    
+    def get_error_statistics(self) -> Dict[str, Any]:
+        """
+        Get error statistics for this model instance.
+        
+        Returns:
+            Dictionary containing error statistics
+        """
+        base_stats = {
+            'model_name': self.model_name,
+            'error_count': self._error_count,
+            'last_error': str(self._last_error) if self._last_error else None,
+            'is_fitted': self.is_fitted
+        }
+        
+        # Add global error handler statistics
+        global_stats = self.error_handler.get_error_statistics()
+        base_stats.update(global_stats)
+        
+        return base_stats
 
 
 class EnsembleForecaster(BaseForecaster):
@@ -1063,117 +1288,219 @@ class ARIMAForecaster(BaseForecaster):
         self._aic_score = None
         self._bic_score = None
         
-    def fit(self, data: pd.Series, exog: Optional[pd.DataFrame] = None) -> None:
+    def fit(self, data: pd.Series, exog: Optional[pd.DataFrame] = None, ticker: str = "unknown") -> None:
         """
-        Fit ARIMA model with automatic parameter selection.
+        Fit ARIMA model with automatic parameter selection and robust error handling.
         
         Args:
             data: Time series data for training
             exog: Optional exogenous variables (not used in basic ARIMA)
+            ticker: Ticker symbol for context
             
         Raises:
             ValueError: If data is insufficient or invalid
-            RuntimeError: If model training fails
+            RuntimeError: If model training fails after all recovery attempts
         """
         import time
         start_time = time.time()
         
         try:
-            # Validate input data
-            self._validate_data(data, min_points=self.config.get('min_data_points', 100))
+            # Validate and clean input data
+            clean_data = self._validate_data(data, min_points=self.config.get('min_data_points', 100), ticker=ticker)
             
             # Store training data
-            self._training_data = data.copy()
+            self._training_data = clean_data.copy()
             
-            # Prepare data (handle missing values)
-            clean_data = self._prepare_data(data)
+            # Additional data preparation with error handling
+            try:
+                prepared_data = self._prepare_data(clean_data)
+            except Exception as e:
+                self.logger.warning(f"Data preparation failed for {ticker}, using cleaned data: {e}")
+                prepared_data = clean_data
             
-            # Check stationarity and suggest differencing
-            if self.config.get('auto_arima', True):
-                self._best_order = self._auto_arima_selection(clean_data)
-            else:
-                self._best_order = tuple(self.config['order'])
+            # Parameter selection with error handling
+            try:
+                if self.config.get('auto_arima', True):
+                    self._best_order = self._auto_arima_selection(prepared_data)
+                else:
+                    self._best_order = tuple(self.config['order'])
+            except Exception as e:
+                self.logger.warning(f"Auto-ARIMA selection failed for {ticker}, using default order: {e}")
+                self._best_order = (1, 1, 1)  # Conservative default
             
             # Fit the model with best parameters
-            self.logger.info(f"Fitting ARIMA{self._best_order} model")
+            self.logger.info(f"Fitting ARIMA{self._best_order} model for {ticker}")
             
             # Determine appropriate trend based on differencing order
             p, d, q = self._best_order
-            if d > 0:
-                # For integrated models, use no trend or linear trend
-                trend = 'n'  # No trend for differenced data
-            else:
-                trend = self.config.get('trend', 'c')
+            trend = 'n' if d > 0 else self.config.get('trend', 'c')
             
-            model = self.ARIMA(
-                clean_data,
-                order=self._best_order,
-                trend=trend,
-                enforce_stationarity=self.config.get('enforce_stationarity', False),
-                enforce_invertibility=self.config.get('enforce_invertibility', False)
-            )
+            # Try fitting with progressively simpler configurations
+            fit_attempts = [
+                # Primary attempt with selected parameters
+                {
+                    'order': self._best_order,
+                    'trend': trend,
+                    'enforce_stationarity': self.config.get('enforce_stationarity', False),
+                    'enforce_invertibility': self.config.get('enforce_invertibility', False)
+                },
+                # Fallback 1: Simpler order
+                {
+                    'order': (1, 1, 1),
+                    'trend': 'c',
+                    'enforce_stationarity': True,
+                    'enforce_invertibility': True
+                },
+                # Fallback 2: Even simpler
+                {
+                    'order': (1, 0, 0),
+                    'trend': 'c',
+                    'enforce_stationarity': True,
+                    'enforce_invertibility': True
+                }
+            ]
             
-            self._fitted_model = model.fit()
+            fitted_successfully = False
+            last_error = None
+            
+            for attempt_idx, params in enumerate(fit_attempts):
+                try:
+                    model = self.ARIMA(prepared_data, **params)
+                    self._fitted_model = model.fit(disp=False)
+                    self._best_order = params['order']
+                    fitted_successfully = True
+                    
+                    if attempt_idx > 0:
+                        self.logger.warning(f"ARIMA fitting succeeded on fallback attempt {attempt_idx + 1} for {ticker}")
+                    
+                    break
+                    
+                except Exception as e:
+                    last_error = e
+                    self.logger.warning(f"ARIMA fit attempt {attempt_idx + 1} failed for {ticker}: {e}")
+                    continue
+            
+            if not fitted_successfully:
+                # Handle the final error
+                context = ErrorContext(
+                    ticker=ticker,
+                    model_name=self.model_name,
+                    operation="fit",
+                    data_points=len(prepared_data),
+                    timestamp=datetime.now(),
+                    additional_info={'attempts': len(fit_attempts), 'last_error': str(last_error)}
+                )
+                
+                recovery_successful, recovery_result = self.error_handler.handle_error(
+                    last_error, context, ErrorCategory.MODEL_TRAINING, ErrorSeverity.HIGH
+                )
+                
+                if not recovery_successful:
+                    raise RuntimeError(f"ARIMA model fitting failed after {len(fit_attempts)} attempts: {last_error}")
             
             # Store model performance metrics
-            self._aic_score = self._fitted_model.aic
-            self._bic_score = self._fitted_model.bic
+            try:
+                self._aic_score = self._fitted_model.aic
+                self._bic_score = self._fitted_model.bic
+            except Exception as e:
+                self.logger.warning(f"Could not extract AIC/BIC scores for {ticker}: {e}")
+                self._aic_score = float('inf')
+                self._bic_score = float('inf')
             
             # Mark as fitted
             self.is_fitted = True
             
             training_time = time.time() - start_time
             self.logger.info(
-                f"ARIMA model fitted successfully in {training_time:.2f}s. "
+                f"ARIMA model fitted successfully for {ticker} in {training_time:.2f}s. "
                 f"Order: {self._best_order}, AIC: {self._aic_score:.4f}, BIC: {self._bic_score:.4f}"
             )
             
-        except ValueError as e:
-            # Re-raise ValueError as-is (for data validation errors)
-            self.logger.error(f"ARIMA model validation failed: {str(e)}")
-            raise e
         except Exception as e:
-            self.logger.error(f"Failed to fit ARIMA model: {str(e)}")
-            raise RuntimeError(f"ARIMA model fitting failed: {str(e)}")
+            # Final error handling
+            self._handle_model_error(e, 'fit', ticker, ErrorSeverity.HIGH)
+            raise RuntimeError(f"ARIMA model fitting failed for {ticker}: {str(e)}")
     
-    def predict(self, periods: int, exog: Optional[pd.DataFrame] = None) -> float:
+    def predict(self, periods: int, exog: Optional[pd.DataFrame] = None, ticker: str = "unknown") -> float:
         """
-        Generate forecast for the specified number of periods.
+        Generate forecast for the specified number of periods with robust error handling.
         
         Args:
             periods: Number of periods to forecast
             exog: Optional exogenous variables (not used in basic ARIMA)
+            ticker: Ticker symbol for context
             
         Returns:
             Expected return for the forecast period
             
         Raises:
-            RuntimeError: If model is not fitted or prediction fails
+            RuntimeError: If model is not fitted or prediction fails after all recovery attempts
         """
         import time
         start_time = time.time()
         
         if not self.is_fitted or self._fitted_model is None:
-            raise RuntimeError("Model must be fitted before making predictions")
+            self.logger.error(f"ARIMA model is not fitted for prediction on {ticker}")
+            return self._get_fallback_prediction(ticker)
         
         try:
-            # Generate forecast
-            forecast_result = self._fitted_model.forecast(steps=periods)
+            # Validate periods parameter
+            if periods <= 0:
+                raise ValueError(f"Invalid periods value: {periods}")
             
-            # Return the final period forecast (expected return)
+            # Generate forecast with error handling
+            try:
+                forecast_result = self._fitted_model.forecast(steps=periods)
+            except Exception as e:
+                self.logger.warning(f"Primary forecast method failed for {ticker}, trying alternative: {e}")
+                # Try alternative forecasting method
+                forecast_result = self._fitted_model.predict(start=len(self._training_data), 
+                                                           end=len(self._training_data) + periods - 1)
+            
+            # Extract the final period forecast
             if isinstance(forecast_result, pd.Series):
                 expected_return = forecast_result.iloc[-1]
+            elif hasattr(forecast_result, '__getitem__'):
+                expected_return = forecast_result[-1]
             else:
-                expected_return = forecast_result[-1] if hasattr(forecast_result, '__getitem__') else forecast_result
+                expected_return = forecast_result
+            
+            # Validate prediction result
+            if expected_return is None or np.isnan(expected_return) or np.isinf(expected_return):
+                raise ValueError(f"Invalid prediction result: {expected_return}")
+            
+            # Sanity check: ensure prediction is within reasonable bounds
+            if abs(expected_return) > 10:  # More than 1000% return seems unrealistic
+                self.logger.warning(f"Extreme prediction value for {ticker}: {expected_return}, capping at ±1.0")
+                expected_return = np.sign(expected_return) * min(abs(expected_return), 1.0)
             
             prediction_time = time.time() - start_time
-            self.logger.debug(f"ARIMA prediction completed in {prediction_time:.4f}s")
+            self.logger.debug(f"ARIMA prediction completed for {ticker} in {prediction_time:.4f}s")
             
             return float(expected_return)
             
         except Exception as e:
-            self.logger.error(f"ARIMA prediction failed: {str(e)}")
-            raise RuntimeError(f"ARIMA prediction failed: {str(e)}")
+            self.logger.error(f"ARIMA prediction failed for {ticker}: {str(e)}")
+            
+            # Handle prediction error
+            context = ErrorContext(
+                ticker=ticker,
+                model_name=self.model_name,
+                operation="predict",
+                data_points=len(self._training_data) if self._training_data is not None else 0,
+                timestamp=datetime.now(),
+                additional_info={'periods': periods, 'fitted_model_available': self._fitted_model is not None}
+            )
+            
+            recovery_successful, recovery_result = self.error_handler.handle_error(
+                e, context, ErrorCategory.MODEL_PREDICTION, ErrorSeverity.HIGH
+            )
+            
+            if recovery_successful and isinstance(recovery_result, (int, float)):
+                return float(recovery_result)
+            
+            # Final fallback
+            return self._get_fallback_prediction(ticker)
     
     def validate(self, data: pd.Series, test_size: float = 0.2) -> Dict[str, float]:
         """

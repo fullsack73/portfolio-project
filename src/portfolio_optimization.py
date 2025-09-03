@@ -25,6 +25,12 @@ from forecasting_models import (
 from model_validator import ModelValidator
 from forecasting_config import get_forecasting_config, get_enabled_models
 from model_performance import record_model_performance, get_performance_report
+from forecasting_error_handler import (
+    ForecastingErrorHandler, DataQualityValidator, ErrorContext,
+    ErrorCategory, ErrorSeverity, robust_forecasting_wrapper
+)
+from forecasting_fallback_system import graceful_degradation_system
+from forecasting_integration import comprehensive_forecasting_system
 import pickle
 import hashlib
 
@@ -308,6 +314,261 @@ def _forecast_single_ticker(ticker, ticker_data, use_lightweight=True):
         logger.error(f"Critical error processing {ticker}: {e}")
         return ticker, 0.05
 
+
+@robust_forecasting_wrapper
+def robust_forecast_returns(tickers, data, method='advanced', max_workers=None, ticker_to_data=None):
+    """
+    Robust return forecasting with comprehensive error handling and fallback mechanisms.
+    
+    Args:
+        tickers: List of ticker symbols
+        data: Historical price data
+        method: Forecasting method ('advanced', 'lightweight', 'fallback')
+        max_workers: Maximum number of parallel workers
+        ticker_to_data: Pre-computed ticker data mapping
+        
+    Returns:
+        Dictionary of expected returns with error handling
+    """
+    logger.info(f"Starting robust forecast for {len(tickers)} tickers using {method} method")
+    
+    # Initialize error handler and fallback system
+    error_handler = ForecastingErrorHandler()
+    data_validator = DataQualityValidator()
+    
+    expected_returns = {}
+    failed_tickers = []
+    fallback_used = []
+    
+    # Get forecasting configuration
+    try:
+        config = get_forecasting_config()
+        enabled_models = get_enabled_models()
+    except Exception as e:
+        logger.warning(f"Failed to load forecasting config, using defaults: {e}")
+        config = {'default_method': 'arima', 'parallel_processing': True}
+        enabled_models = ['arima']
+    
+    def _robust_single_ticker_forecast(ticker):
+        """Forecast single ticker with comprehensive error handling."""
+        try:
+            # Get ticker data
+            if ticker_to_data and ticker in ticker_to_data:
+                ticker_data = ticker_to_data[ticker]
+            elif ticker in data.columns:
+                ticker_data = data[ticker].dropna()
+            else:
+                logger.warning(f"No data available for {ticker}")
+                return ticker, None, 'no_data'
+            
+            # Validate data quality
+            is_valid, issues = data_validator.validate_data(ticker_data, ticker, min_points=50)
+            
+            if not is_valid:
+                logger.warning(f"Data quality issues for {ticker}: {'; '.join(issues)}")
+                # Try to clean the data
+                ticker_data = data_validator.clean_data(ticker_data, ticker)
+                
+                # Re-validate
+                is_valid_after_cleaning, remaining_issues = data_validator.validate_data(
+                    ticker_data, ticker, min_points=30  # Lower threshold after cleaning
+                )
+                
+                if not is_valid_after_cleaning:
+                    logger.error(f"Data unusable for {ticker} even after cleaning: {'; '.join(remaining_issues)}")
+                    return ticker, None, 'data_quality_failed'
+            
+            # Try advanced forecasting if requested
+            if method == 'advanced' and enabled_models:
+                prediction, model_used = _try_advanced_forecasting(ticker, ticker_data, enabled_models)
+                if prediction is not None:
+                    # Cache successful prediction
+                    graceful_degradation_system.cache_successful_prediction(
+                        ticker, model_used, 1, prediction
+                    )
+                    return ticker, prediction, f'advanced_{model_used}'
+            
+            # Try lightweight methods
+            if method in ['advanced', 'lightweight']:
+                prediction, method_used = _try_lightweight_forecasting(ticker, ticker_data)
+                if prediction is not None:
+                    return ticker, prediction, f'lightweight_{method_used}'
+            
+            # Use fallback system
+            prediction, fallback_method = graceful_degradation_system.get_fallback_prediction(
+                ticker, ticker_data, periods=1
+            )
+            
+            return ticker, prediction, f'fallback_{fallback_method}'
+            
+        except Exception as e:
+            logger.error(f"Complete forecasting failure for {ticker}: {e}")
+            
+            # Create error context
+            context = ErrorContext(
+                ticker=ticker,
+                model_name='robust_forecast',
+                operation='forecast_returns',
+                data_points=len(ticker_data) if 'ticker_data' in locals() else 0,
+                timestamp=datetime.now(),
+                additional_info={'method': method, 'error': str(e)}
+            )
+            
+            # Handle the error
+            recovery_successful, recovery_result = error_handler.handle_error(
+                e, context, ErrorCategory.MODEL_PREDICTION, ErrorSeverity.HIGH
+            )
+            
+            if recovery_successful and isinstance(recovery_result, (int, float)):
+                return ticker, float(recovery_result), 'error_recovery'
+            
+            # Ultimate fallback
+            return ticker, 0.05, 'ultimate_fallback'
+    
+    # Process tickers with parallel execution and error handling
+    if max_workers is None:
+        import os
+        max_workers = min(os.cpu_count() or 4, len(tickers), 8)
+    
+    logger.info(f"Processing {len(tickers)} tickers with {max_workers} workers")
+    
+    try:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_ticker = {
+                executor.submit(_robust_single_ticker_forecast, ticker): ticker 
+                for ticker in tickers
+            }
+            
+            # Collect results
+            for future in as_completed(future_to_ticker):
+                ticker = future_to_ticker[future]
+                try:
+                    ticker_result, prediction, method_used = future.result(timeout=60)  # 60 second timeout
+                    
+                    if prediction is not None:
+                        expected_returns[ticker_result] = prediction
+                        
+                        if 'fallback' in method_used:
+                            fallback_used.append(ticker_result)
+                        
+                        logger.debug(f"Forecast for {ticker_result}: {prediction:.6f} ({method_used})")
+                    else:
+                        failed_tickers.append(ticker_result)
+                        expected_returns[ticker_result] = 0.05  # Conservative default
+                        
+                except Exception as e:
+                    logger.error(f"Future execution failed for {ticker}: {e}")
+                    failed_tickers.append(ticker)
+                    expected_returns[ticker] = 0.05
+                    
+    except Exception as e:
+        logger.error(f"Parallel processing failed, falling back to sequential: {e}")
+        
+        # Sequential fallback
+        for ticker in tickers:
+            try:
+                ticker_result, prediction, method_used = _robust_single_ticker_forecast(ticker)
+                expected_returns[ticker_result] = prediction if prediction is not None else 0.05
+                
+                if prediction is None:
+                    failed_tickers.append(ticker_result)
+                elif 'fallback' in method_used:
+                    fallback_used.append(ticker_result)
+                    
+            except Exception as e:
+                logger.error(f"Sequential processing failed for {ticker}: {e}")
+                expected_returns[ticker] = 0.05
+                failed_tickers.append(ticker)
+    
+    # Log summary statistics
+    total_tickers = len(tickers)
+    successful_forecasts = len([v for v in expected_returns.values() if v != 0.05])
+    fallback_count = len(fallback_used)
+    failed_count = len(failed_tickers)
+    
+    logger.info(f"Forecasting summary: {successful_forecasts}/{total_tickers} successful, "
+               f"{fallback_count} used fallback, {failed_count} failed")
+    
+    if failed_tickers:
+        logger.warning(f"Failed tickers: {failed_tickers[:10]}{'...' if len(failed_tickers) > 10 else ''}")
+    
+    return expected_returns
+
+
+def _try_advanced_forecasting(ticker, data, enabled_models):
+    """Try advanced forecasting models with error handling."""
+    logger.debug(f"Trying advanced forecasting for {ticker}")
+    
+    # Model priority order
+    model_priority = ['ensemble', 'lstm', 'sarimax', 'xgboost', 'lightgbm', 'catboost', 'arima']
+    
+    for model_name in model_priority:
+        if model_name not in enabled_models:
+            continue
+            
+        try:
+            # Create and fit model
+            if model_name == 'arima':
+                model = ARIMAForecaster()
+            elif model_name == 'lstm':
+                model = LSTMForecaster()
+            elif model_name == 'sarimax':
+                model = SARIMAXForecaster()
+            elif model_name == 'xgboost':
+                model = XGBoostForecaster()
+            elif model_name == 'lightgbm':
+                model = LightGBMForecaster()
+            elif model_name == 'catboost':
+                model = CatBoostForecaster()
+            elif model_name == 'ensemble':
+                model = EnsembleForecaster()
+            else:
+                continue
+            
+            # Fit with timeout and error handling
+            success = model._safe_fit(data, ticker=ticker)
+            if not success:
+                logger.warning(f"Model {model_name} fitting failed for {ticker}")
+                continue
+            
+            # Generate prediction
+            prediction = model._safe_predict(1, ticker=ticker)
+            if prediction is not None:
+                logger.debug(f"Advanced forecast for {ticker} using {model_name}: {prediction:.6f}")
+                return prediction, model_name
+                
+        except Exception as e:
+            logger.warning(f"Advanced model {model_name} failed for {ticker}: {e}")
+            continue
+    
+    return None, None
+
+
+def _try_lightweight_forecasting(ticker, data):
+    """Try lightweight forecasting methods."""
+    logger.debug(f"Trying lightweight forecasting for {ticker}")
+    
+    methods = [
+        ('exponential_smoothing', _exponential_smoothing_forecast),
+        ('linear_trend', _linear_trend_forecast),
+    ]
+    
+    for method_name, method_func in methods:
+        try:
+            prediction = method_func(data.values)
+            if prediction is not None and not np.isnan(prediction) and not np.isinf(prediction):
+                logger.debug(f"Lightweight forecast for {ticker} using {method_name}: {prediction:.6f}")
+                return prediction, method_name
+        except Exception as e:
+            logger.warning(f"Lightweight method {method_name} failed for {ticker}: {e}")
+            continue
+    
+    return None, None
+
+
 def _get_model_cache_key(ticker, model_name, data_hash):
     """Generate cache key for trained models."""
     return f"model_{model_name}_{ticker}_{data_hash}"
@@ -447,14 +708,38 @@ def advanced_forecast_returns(data, use_ensemble=True, max_models_per_ticker=5, 
                     
             except Exception as exc:
                 logger.error(f"Advanced forecasting failed for {ticker}: {exc}")
-                # Fallback to lightweight method
+                # Enhanced fallback using graceful degradation system
                 try:
-                    _, fallback_forecast = _forecast_single_ticker(ticker, data[ticker], use_lightweight=True)
+                    ticker_data = data[ticker].dropna()
+                    fallback_forecast, fallback_method = graceful_degradation_system.get_fallback_prediction(
+                        ticker, ticker_data, periods=1, failed_models=['advanced_models']
+                    )
                     forecasts[ticker] = fallback_forecast
-                    model_usage_stats['fallback'] = model_usage_stats.get('fallback', 0) + 1
-                except:
-                    forecasts[ticker] = 0.05  # Final fallback
-                    model_usage_stats['default'] = model_usage_stats.get('default', 0) + 1
+                    model_usage_stats[f'fallback_{fallback_method}'] = model_usage_stats.get(f'fallback_{fallback_method}', 0) + 1
+                except Exception as fallback_exc:
+                    logger.error(f"Graceful degradation also failed for {ticker}: {fallback_exc}")
+                    # Try lightweight method as secondary fallback
+                    try:
+                        _, lightweight_forecast = _forecast_single_ticker(ticker, data[ticker], use_lightweight=True)
+                        forecasts[ticker] = lightweight_forecast
+                        model_usage_stats['lightweight_fallback'] = model_usage_stats.get('lightweight_fallback', 0) + 1
+                    except Exception as lightweight_exc:
+                        logger.error(f"All fallback methods failed for {ticker}: {lightweight_exc}")
+                        # Enhanced ultimate fallback
+                        try:
+                            ticker_data = data[ticker].dropna() if ticker in data.columns else None
+                            if ticker_data is not None and not ticker_data.empty and len(ticker_data) >= 5:
+                                # Use recent performance as fallback
+                                recent_return = (ticker_data.iloc[-1] / ticker_data.iloc[0]) ** (252 / len(ticker_data)) - 1
+                                if abs(recent_return) < 1.0:  # Sanity check
+                                    forecasts[ticker] = float(recent_return)
+                                else:
+                                    forecasts[ticker] = 0.05
+                            else:
+                                forecasts[ticker] = 0.05
+                        except:
+                            forecasts[ticker] = 0.05  # Final conservative fallback
+                        model_usage_stats['ultimate_fallback'] = model_usage_stats.get('ultimate_fallback', 0) + 1
     
     elapsed_time = time.time() - start_time
     logger.info(f"ADVANCED forecasting completed in {elapsed_time:.2f} seconds for {len(forecasts)} tickers")
@@ -736,9 +1021,43 @@ def _advanced_forecast_single_ticker(ticker, ticker_data, enabled_models, use_en
         raise e
 
 
-def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1):
-    """Forecast expected returns using lightweight methods by default with optional Prophet for high-priority tickers."""
+def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1, use_robust_system=False):
+    """
+    Forecast expected returns using lightweight methods by default with optional robust system.
+    
+    Args:
+        data: Historical price data
+        use_lightweight: Whether to use lightweight forecasting methods
+        prophet_ratio: Ratio of tickers to use Prophet for (when not using robust system)
+        use_robust_system: Whether to use the robust forecasting system with error handling
+    """
     start_time = time.time()
+    
+    # Use robust system if requested
+    if use_robust_system:
+        logger.info("Using comprehensive forecasting system with graceful degradation")
+        tickers = list(data.columns)
+        method = 'lightweight' if use_lightweight else 'auto'
+        
+        try:
+            expected_returns = comprehensive_forecasting_system.forecast_returns(
+                tickers=tickers,
+                data=data,
+                periods=1,
+                method=method,
+                max_workers=None
+            )
+            
+            total_time = time.time() - start_time
+            logger.info(f"Comprehensive forecasting completed in {total_time:.2f}s for {len(tickers)} tickers")
+            
+            return expected_returns
+            
+        except Exception as e:
+            logger.error(f"Comprehensive forecasting system failed, falling back to lightweight: {e}")
+            # Fall through to original lightweight system
+    
+    # Original lightweight forecasting system
     method = "LIGHTWEIGHT" if use_lightweight else "PROPHET"
     logger.info(f"Starting PARALLEL {method} forecasting for {len(data.columns)} tickers")
     
