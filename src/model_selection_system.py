@@ -13,8 +13,8 @@ from typing import Dict, List, Optional, Tuple, Any, Union
 import pandas as pd
 import numpy as np
 
-from src.forecasting_models import BaseForecaster, ModelFactory, ForecastResult
-from src.model_validator import ModelValidator, ValidationResult, ModelRanking
+from forecasting_models import BaseForecaster, ModelFactory, ForecastResult
+from model_validator import ModelValidator, ValidationResult, ModelRanking
 
 
 # Configure logging

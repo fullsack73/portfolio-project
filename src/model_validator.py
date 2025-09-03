@@ -16,7 +16,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 import json
 import os
 
-from src.forecasting_models import BaseForecaster, ModelPerformance, ForecastResult
+from forecasting_models import BaseForecaster, ModelPerformance, ForecastResult
 
 
 # Configure logging

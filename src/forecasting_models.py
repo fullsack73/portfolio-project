@@ -833,7 +833,7 @@ class EnsembleForecaster(BaseForecaster):
         """
         try:
             if optimizer is None:
-                from src.ensemble_optimizer import EnsembleOptimizer
+                from ensemble_optimizer import EnsembleOptimizer
                 optimizer = EnsembleOptimizer()
             
             # Collect recent performance metrics
@@ -870,7 +870,7 @@ class EnsembleForecaster(BaseForecaster):
         """
         try:
             if optimizer is None:
-                from src.ensemble_optimizer import EnsembleOptimizer
+                from ensemble_optimizer import EnsembleOptimizer
                 optimizer = EnsembleOptimizer()
             
             performance = optimizer.monitor_ensemble_performance(
@@ -909,7 +909,7 @@ class EnsembleForecaster(BaseForecaster):
         """
         try:
             if optimizer is None:
-                from src.ensemble_optimizer import EnsembleOptimizer
+                from ensemble_optimizer import EnsembleOptimizer
                 optimizer = EnsembleOptimizer()
             
             return optimizer._calculate_diversity_metrics(self, data)

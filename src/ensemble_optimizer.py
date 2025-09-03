@@ -15,7 +15,7 @@ import numpy as np
 import json
 import os
 
-from src.forecasting_models import BaseForecaster, EnsembleForecaster
+from forecasting_models import BaseForecaster, EnsembleForecaster
 
 
 # Configure logging
