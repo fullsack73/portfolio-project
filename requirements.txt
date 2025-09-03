@@ -9,3 +9,7 @@ PyPortfolioOpt
 prophet
 finvizfinance
 psutil
+statsmodels
+xgboost
+tensorflow
+catboost
