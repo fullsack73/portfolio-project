@@ -386,6 +386,7 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     logger.info(f"Initial ticker list: {tickers[:10]}{'...' if len(tickers) > 10 else ''}")
     
     data = get_stock_data(tickers, start_date, end_date)
+    print("DEBUG: Calling get_stock_data")
     logger.info(f"PIPELINE STAGE 1 RESULT: Fetched data shape: {data.shape}")
     logger.info(f"Fetched data columns: {list(data.columns)[:10]}{'...' if len(data.columns) > 10 else ''}")
 
