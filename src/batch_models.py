@@ -1,138 +1,99 @@
-"""
-Placeholder for batch forecasting models - to be implemented in tasks 3 and 4.
-
-This module will contain:
-- BatchXGBoostForecaster (task 3)
-- BatchLinearForecaster (task 4)
-"""
-
-import logging
 import pandas as pd
-from typing import Dict, List
-from abc import ABC, abstractmethod
+import xgboost as xgb
+from typing import List, Dict, Optional
 
-from batch_forecasting_config import ModelConfig
+from forecasting_models import BaseForecaster
 
-logger = logging.getLogger(__name__)
+class BatchXGBoostForecaster(BaseForecaster):
+    """
+    XGBoost model with multi-output regression for batch processing.
+    Primary model for speed and accuracy balance.
+    """
 
+    def __init__(self, model_name: str = "batch_xgboost", **kwargs):
+        super().__init__(model_name)
+        self.config = {
+            'n_estimators': 1000,
+            'learning_rate': 0.05,
+            'max_depth': 5,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'objective': 'reg:squarederror',
+            'n_jobs': -1,
+        }
+        self.config.update(kwargs)
+        self._model = xgb.XGBRegressor(**self.config)
+        self.tickers = []
 
-class BaseBatchForecaster(ABC):
-    """Base class for batch forecasting models."""
-    
-    def __init__(self, config: ModelConfig):
+    def fit(self, data: pd.Series, exog: Optional[pd.DataFrame] = None) -> None:
+        raise NotImplementedError("This is a batch forecaster. Use fit_batch instead.")
+
+    def predict(self, periods: int, exog: Optional[pd.DataFrame] = None) -> float:
+        raise NotImplementedError("This is a batch forecaster. Use predict_batch instead.")
+
+    def validate(self, data: pd.Series, test_size: float = 0.2) -> Dict[str, float]:
+        raise NotImplementedError("This is a batch forecaster and does not support single series validation.")
+
+    def fit_batch(self, individual_features: pd.DataFrame, shared_features: pd.DataFrame, tickers: List[str], returns: pd.DataFrame) -> None:
         """
-        Initialize batch forecaster with configuration.
-        
+        Fit multi-output XGBoost model with hardcoded optimal parameters.
+
         Args:
-            config: Model configuration
+            individual_features (pd.DataFrame): Multi-index DataFrame of individual ticker features.
+            shared_features (pd.DataFrame): DataFrame of shared market features.
+            tickers (List[str]): List of tickers in the batch.
+            returns (pd.DataFrame): DataFrame of returns for each ticker, used as the target.
         """
-        self.config = config
-        self.is_fitted = False
-        self.logger = logging.getLogger(f'batch_forecasting.{self.__class__.__name__}')
-    
-    @abstractmethod
-    def fit_batch(self, 
-                  individual_features: pd.DataFrame, 
-                  shared_features: pd.DataFrame,
-                  tickers: List[str]) -> None:
-        """
-        Fit model on batch data with shared features.
+        self.tickers = tickers
         
-        Args:
-            individual_features: Individual ticker features
-            shared_features: Market-wide features
-            tickers: List of ticker symbols in batch
-        """
-        pass
-    
-    @abstractmethod
-    def predict_batch(self, 
-                     periods: int,
-                     shared_features: pd.DataFrame) -> Dict[str, float]:
-        """
-        Generate predictions for all tickers in the batch.
+        # Combine features
+        X = individual_features.unstack(level='ticker')
         
+        # Align shared features
+        shared_features_aligned = shared_features.reindex(X.index).fillna(method='ffill').fillna(method='bfill')
+        
+        # Merge shared features for each ticker
+        for ticker in tickers:
+            for col in shared_features_aligned.columns:
+                X[(ticker, col)] = shared_features_aligned[col]
+        
+        X.columns = ['_'.join(col) for col in X.columns]
+        
+        # Align target variable y
+        y = returns[tickers].reindex(X.index).fillna(0)
+        
+        self._model.fit(X, y)
+        self.is_fitted = True
+
+    def predict_batch(self, periods: int, individual_features: pd.DataFrame, shared_features: pd.DataFrame) -> Dict[str, float]:
+        """
+        Generate batch predictions using multi-output regression.
+
         Args:
-            periods: Forecast horizon
-            shared_features: Market-wide features for prediction
-            
+            periods (int): Number of periods to forecast (used to select the latest features).
+            individual_features (pd.DataFrame): Features for the prediction period.
+            shared_features (pd.DataFrame): Shared features for the prediction period.
+
         Returns:
-            Dictionary mapping tickers to expected returns
+            Dict[str, float]: Dictionary of ticker to predicted return.
         """
-        pass
-
-
-class BatchXGBoostForecaster(BaseBatchForecaster):
-    """
-    Placeholder for XGBoost model with multi-output regression for batch processing.
-    To be implemented in task 3.
-    """
-    
-    def __init__(self, config: ModelConfig):
-        super().__init__(config)
-        self.model = None
-        self.tickers = []
-        self.logger.info("BatchXGBoostForecaster placeholder initialized")
-    
-    def fit_batch(self, 
-                  individual_features: pd.DataFrame, 
-                  shared_features: pd.DataFrame,
-                  tickers: List[str]) -> None:
-        """Placeholder for multi-output XGBoost model fitting."""
-        self.logger.warning("Using placeholder XGBoost model - implement in task 3")
-        self.tickers = tickers
-        self.is_fitted = True
-    
-    def predict_batch(self, 
-                     periods: int,
-                     shared_features: pd.DataFrame) -> Dict[str, float]:
-        """Placeholder for batch predictions using XGBoost."""
         if not self.is_fitted:
-            raise ValueError("Model must be fitted before prediction")
-        
-        self.logger.warning("Using placeholder XGBoost predictions - implement in task 3")
-        
-        # Return placeholder predictions
-        predictions = {}
-        for ticker in self.tickers:
-            predictions[ticker] = 0.08  # 8% placeholder return
-        
-        return predictions
+            raise RuntimeError("Model is not fitted. Call fit_batch first.")
 
-
-class BatchLinearForecaster(BaseBatchForecaster):
-    """
-    Placeholder for simple linear regression model for batch processing.
-    To be implemented in task 4.
-    """
-    
-    def __init__(self, config: ModelConfig):
-        super().__init__(config)
-        self.model = None
-        self.tickers = []
-        self.logger.info("BatchLinearForecaster placeholder initialized")
-    
-    def fit_batch(self, 
-                  individual_features: pd.DataFrame, 
-                  shared_features: pd.DataFrame,
-                  tickers: List[str]) -> None:
-        """Placeholder for multi-output linear regression model fitting."""
-        self.logger.warning("Using placeholder Linear model - implement in task 4")
-        self.tickers = tickers
-        self.is_fitted = True
-    
-    def predict_batch(self, 
-                     periods: int,
-                     shared_features: pd.DataFrame) -> Dict[str, float]:
-        """Placeholder for batch predictions using linear regression."""
-        if not self.is_fitted:
-            raise ValueError("Model must be fitted before prediction")
+        # Prepare the latest features for prediction
+        latest_features = individual_features.unstack(level='ticker').tail(periods)
         
-        self.logger.warning("Using placeholder Linear predictions - implement in task 4")
-        
-        # Return placeholder predictions
-        predictions = {}
+        # Align and merge shared features
+        shared_features_aligned = shared_features.reindex(latest_features.index).fillna(method='ffill').fillna(method='bfill')
         for ticker in self.tickers:
-            predictions[ticker] = 0.06  # 6% placeholder return
+            for col in shared_features_aligned.columns:
+                latest_features[(ticker, col)] = shared_features_aligned[col]
+
+        latest_features.columns = ['_'.join(col) for col in latest_features.columns]
+
+        predictions = self._model.predict(latest_features)
         
-        return predictions
+        # Extract the last prediction for each ticker
+        last_predictions = predictions[-1]
+        
+        return {ticker: float(pred) for ticker, pred in zip(self.tickers, last_predictions)}
