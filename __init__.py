@@ -1,14 +1,3 @@
-"""
-Financial Analysis and Portfolio Optimization Package
-
-This package provides advanced forecasting models, portfolio optimization,
-and financial analysis tools.
-"""
-
-__version__ = "1.0.0"
-__author__ = "Financial Analysis Team"
-
-# Import main modules for easier access
 try:
     from .portfolio_optimization import optimize_portfolio, get_forecasting_performance_dashboard, advanced_forecast_returns
     from .forecasting_models import ForecastingModelManager
