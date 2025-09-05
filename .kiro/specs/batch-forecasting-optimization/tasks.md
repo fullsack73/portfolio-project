@@ -20,27 +20,27 @@
   - Use hardcoded optimal XGBoost parameters for speed
   - _Requirements: 3.1, 3.2_
 
-- [x] 4. Create BatchLinearForecaster as fallback model
+- [ ] 4. Create BatchLinearForecaster as fallback model
   - Implement BatchLinearForecaster class for simple multi-output linear regression
   - Add fit_batch and predict_batch methods with sklearn MultiOutputRegressor
   - Ensure fast training and prediction for fallback scenarios
   - _Requirements: 1.4, 3.1_
 
-- [x] 5. Implement batch error handling and fallback system
+- [ ] 5. Implement batch error handling and fallback system
   - Create BatchErrorHandler for comprehensive error recovery
   - Implement graceful degradation from batch to individual processing
   - Add memory monitoring and automatic batch size reduction
   - Handle individual ticker failures within batches
   - _Requirements: 1.4, 4.3_
 
-- [x] 6. Integrate batch system with existing portfolio optimization
+- [ ] 6. Integrate batch system with existing portfolio optimization
   - Modify robust_forecast_returns function to use BatchForecastingSystem
   - Add batch processing configuration options
   - Maintain backward compatibility with individual processing
   - Update caching system to work with batch predictions
   - _Requirements: 1.1, 1.2, 4.2_
 
-- [x] 7. Add performance monitoring and metrics
+- [ ] 7. Add performance monitoring and metrics
   - Implement BatchPerformanceMonitor for tracking processing times
   - Add memory usage monitoring during batch processing
   - Create performance comparison metrics (batch vs individual)

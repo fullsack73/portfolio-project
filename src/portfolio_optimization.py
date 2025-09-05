@@ -31,8 +31,6 @@ from forecasting_error_handler import (
 )
 from forecasting_fallback_system import graceful_degradation_system
 from forecasting_integration import comprehensive_forecasting_system
-from src.batch_forecasting_system import BatchForecastingSystem
-from src.batch_forecasting_config import get_default_batch_config
 import pickle
 import hashlib
 
@@ -325,7 +323,7 @@ def robust_forecast_returns(tickers, data, method='advanced', max_workers=None, 
     Args:
         tickers: List of ticker symbols
         data: Historical price data
-        method: Forecasting method ('advanced', 'lightweight', 'fallback', 'batch')
+        method: Forecasting method ('advanced', 'lightweight', 'fallback')
         max_workers: Maximum number of parallel workers
         ticker_to_data: Pre-computed ticker data mapping
         
@@ -333,12 +331,6 @@ def robust_forecast_returns(tickers, data, method='advanced', max_workers=None, 
         Dictionary of expected returns with error handling
     """
     logger.info(f"Starting robust forecast for {len(tickers)} tickers using {method} method")
-
-    if method == 'batch':
-        logger.info("Using Batch Forecasting System")
-        config = get_default_batch_config()
-        batch_system = BatchForecastingSystem(config)
-        return batch_system.forecast_batch_returns(tickers, data)
     
     # Initialize error handler and fallback system
     error_handler = ForecastingErrorHandler()
