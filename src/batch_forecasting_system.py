@@ -14,8 +14,12 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import psutil
 
-from batch_forecasting_config import BatchForecastingConfig, BatchPerformanceMetrics
+from batch_forecasting_config import BatchPerformanceMetrics
+from src.batch_performance_monitor import BatchPerformanceMonitor
 from simple_batch_manager import SimpleBatchManager
+from src.fallback_coordinator import FallbackCoordinator
+from src.batch_error_handler import BatchContext
+from cache_manager import cached
 
 logger = logging.getLogger(__name__)
 
@@ -49,16 +53,13 @@ class BatchForecastingSystem:
         self.batch_manager = SimpleBatchManager(self.config.batch)
         self.feature_extractor = None  # Will be initialized when needed
         self.batch_models = {}  # Will be initialized when needed
-        self.fallback_coordinator = None  # Will be initialized when needed
-        
-        # Performance tracking
-        self.performance_metrics = []
-        self.total_processing_time = 0.0
-        self.total_tickers_processed = 0
+        self.fallback_coordinator = FallbackCoordinator(self.config.fallback)
+        self.performance_monitor = BatchPerformanceMonitor()
         
         self.logger = logging.getLogger('batch_forecasting.system')
         self.logger.info("BatchForecastingSystem initialized")
     
+    @cached(l1_ttl=1800, l2_ttl=7200)
     def forecast_batch_returns(self, 
                               tickers: List[str], 
                               data: pd.DataFrame, 
@@ -129,9 +130,7 @@ class BatchForecastingSystem:
                     self.logger.warning(f"No forecast generated for {ticker}, using default")
                     all_forecasts[ticker] = 0.05
             
-            # Record overall performance
-            total_time = time.time() - start_time
-            self._record_overall_performance(len(tickers), total_time, batch_metrics)
+            
             
             self.logger.info(f"Batch forecasting completed in {total_time:.2f}s for {len(tickers)} tickers")
             return all_forecasts
@@ -160,15 +159,12 @@ class BatchForecastingSystem:
         Returns:
             Tuple of (forecasts, performance_metrics)
         """
-        batch_start_time = time.time()
-        
-        # Initialize performance metrics
-        metrics = BatchPerformanceMetrics(
-            batch_size=len(ticker_group),
-            processing_time=0.0,
-            memory_usage=0.0
-        )
-        
+        self.performance_monitor.start_batch(len(ticker_group))
+        feature_extraction_time = 0
+        model_training_time = 0
+        prediction_time = 0
+        model_used = ""
+
         try:
             # Extract batch data
             batch_data = self._extract_batch_data(ticker_group, data)
@@ -178,28 +174,26 @@ class BatchForecastingSystem:
             # Feature extraction
             feature_start = time.time()
             individual_features, shared_features = self._extract_batch_features(ticker_group, batch_data)
-            metrics.feature_extraction_time = time.time() - feature_start
+            feature_extraction_time = time.time() - feature_start
             
             # Model training and prediction
             model_start = time.time()
-            forecasts = self._train_and_predict_batch(
+            forecasts, model_used = self._train_and_predict_batch(
                 ticker_group, individual_features, shared_features, periods
             )
             model_time = time.time() - model_start
-            metrics.model_training_time = model_time * 0.7  # Estimate training portion
-            metrics.prediction_time = model_time * 0.3  # Estimate prediction portion
+            model_training_time = model_time * 0.7  # Estimate training portion
+            prediction_time = model_time * 0.3  # Estimate prediction portion
             
-            # Record performance
-            metrics.processing_time = time.time() - batch_start_time
-            metrics.memory_usage = self._get_memory_usage()
+            self.performance_monitor.end_batch(model_used, feature_extraction_time, model_training_time, prediction_time)
             
-            self.logger.info(f"Batch {batch_id} completed: {len(forecasts)} forecasts in {metrics.processing_time:.2f}s")
+            self.logger.info(f"Batch {batch_id} completed: {len(forecasts)} forecasts in {model_time + feature_extraction_time:.2f}s")
             
-            return forecasts, metrics
+            return forecasts, self.performance_monitor.all_metrics[-1]
             
         except Exception as e:
-            metrics.processing_time = time.time() - batch_start_time
             self.logger.error(f"Batch {batch_id} processing failed: {e}")
+            self.performance_monitor.end_batch("failure", feature_extraction_time, model_training_time, prediction_time, fallback_rate=1.0)
             raise
     
     def _extract_batch_data(self, tickers: List[str], data: pd.DataFrame) -> pd.DataFrame:
@@ -252,7 +246,7 @@ class BatchForecastingSystem:
         """
         # Lazy initialization of feature extractor
         if self.feature_extractor is None:
-            from shared_feature_extractor import SharedFeatureExtractor
+            from .shared_feature_extractor import SharedFeatureExtractor
             self.feature_extractor = SharedFeatureExtractor(self.config.features)
         
         try:
@@ -276,7 +270,7 @@ class BatchForecastingSystem:
                                 ticker_group: List[str],
                                 individual_features: pd.DataFrame,
                                 shared_features: pd.DataFrame,
-                                periods: int) -> Dict[str, float]:
+                                periods: int) -> Tuple[Dict[str, float], str]:
         """
         Train model and generate predictions for a batch.
         
@@ -287,7 +281,7 @@ class BatchForecastingSystem:
             periods: Forecast horizon
             
         Returns:
-            Dictionary of forecasts for each ticker
+            Tuple of (forecasts, model_used)
         """
         # Lazy initialization of batch models
         if not self.batch_models:
@@ -305,7 +299,7 @@ class BatchForecastingSystem:
                 
                 if forecasts:
                     self.logger.debug(f"Primary model {primary_model_name} succeeded")
-                    return forecasts
+                    return forecasts, primary_model_name
             
         except Exception as e:
             self.logger.warning(f"Primary model {primary_model_name} failed: {e}")
@@ -322,14 +316,14 @@ class BatchForecastingSystem:
                 
                 if forecasts:
                     self.logger.info(f"Fallback model {fallback_model_name} succeeded")
-                    return forecasts
+                    return forecasts, fallback_model_name
             
         except Exception as e:
             self.logger.warning(f"Fallback model {fallback_model_name} failed: {e}")
         
         # Ultimate fallback: simple historical mean
         self.logger.warning("All batch models failed, using simple historical mean")
-        return self._simple_historical_forecast(ticker_group, individual_features)
+        return self._simple_historical_forecast(ticker_group, individual_features), "historical_mean"
     
     def _try_model_prediction(self,
                              model: Any,
@@ -471,15 +465,39 @@ class BatchForecastingSystem:
             Dictionary of fallback forecasts
         """
         self.logger.warning(f"Handling batch failure for {len(ticker_batch)} tickers: {error}")
-        
-        # For now, use simple fallback
-        # TODO: Implement more sophisticated fallback strategies in task 5
-        fallback_forecasts = {}
-        
-        for ticker in ticker_batch:
-            fallback_forecasts[ticker] = 0.05  # Conservative default
-        
-        return fallback_forecasts
+
+        context = BatchContext(
+            tickers=ticker_batch,
+            model_name="", # model is not known here
+            operation="process_batch",
+            batch_size=len(ticker_batch)
+        )
+
+        recovery_result = self.fallback_coordinator.handle_error(error, context)
+
+        if recovery_result.recovery_successful:
+            self.logger.info("Batch failure recovery successful.")
+            new_batches = recovery_result.result
+            
+            all_forecasts = {}
+            if isinstance(new_batches, list) and all(isinstance(b, list) for b in new_batches):
+                 for i, new_ticker_batch in enumerate(new_batches):
+                    self.logger.info(f"Processing recovered batch {i+1}/{len(new_batches)} with {len(new_ticker_batch)} tickers")
+                    try:
+                        batch_forecasts, _ = self._process_single_batch(
+                            new_ticker_batch, data, periods, batch_id=f"recovered-{i}"
+                        )
+                        all_forecasts.update(batch_forecasts)
+                    except Exception as e:
+                        self.logger.error(f"Recovered batch processing failed: {e}")
+                        # If even the smaller batch fails, fallback to individual processing for these tickers.
+                        all_forecasts.update(self._fallback_to_individual_processing(new_ticker_batch, data, periods))
+
+            return all_forecasts
+
+        else:
+            self.logger.error("Batch failure recovery failed. Falling back to individual processing for this batch.")
+            return self._fallback_to_individual_processing(ticker_batch, data, periods)
     
     def _fallback_to_individual_processing(self, 
                                           tickers: List[str], 
@@ -541,16 +559,4 @@ class BatchForecastingSystem:
     
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get performance summary statistics."""
-        if self.total_tickers_processed == 0:
-            return {"status": "no_data"}
-        
-        avg_time_per_ticker = self.total_processing_time / self.total_tickers_processed
-        
-        return {
-            "total_tickers_processed": self.total_tickers_processed,
-            "total_processing_time": self.total_processing_time,
-            "avg_time_per_ticker": avg_time_per_ticker,
-            "num_batches_processed": len(self.performance_metrics),
-            "config_strategy": self.config.batch.strategy,
-            "primary_model": self.config.models.primary_model
-        }
+        return self.performance_monitor.get_summary()

@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Optional, Tuple, Any, List
 import pandas as pd
 import numpy as np
-from forecasting_error_handler import (
+from .forecasting_error_handler import (
     ForecastingErrorHandler, DataQualityValidator, ErrorContext, 
     ErrorCategory, ErrorSeverity, robust_forecasting_wrapper
 )
@@ -433,7 +433,7 @@ class EnsembleForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('ensemble')
         except ImportError:
             # Fallback if config module not available
@@ -1058,7 +1058,7 @@ class EnsembleForecaster(BaseForecaster):
         """
         try:
             if optimizer is None:
-                from ensemble_optimizer import EnsembleOptimizer
+                from .ensemble_optimizer import EnsembleOptimizer
                 optimizer = EnsembleOptimizer()
             
             # Collect recent performance metrics
@@ -1095,7 +1095,7 @@ class EnsembleForecaster(BaseForecaster):
         """
         try:
             if optimizer is None:
-                from ensemble_optimizer import EnsembleOptimizer
+                from .ensemble_optimizer import EnsembleOptimizer
                 optimizer = EnsembleOptimizer()
             
             performance = optimizer.monitor_ensemble_performance(
@@ -1134,7 +1134,7 @@ class EnsembleForecaster(BaseForecaster):
         """
         try:
             if optimizer is None:
-                from ensemble_optimizer import EnsembleOptimizer
+                from .ensemble_optimizer import EnsembleOptimizer
                 optimizer = EnsembleOptimizer()
             
             return optimizer._calculate_diversity_metrics(self, data)
@@ -1258,7 +1258,7 @@ class ARIMAForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('arima')
         except ImportError:
             # Fallback if config module not available
@@ -1793,7 +1793,7 @@ class SARIMAXForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('sarimax')
         except ImportError:
             # Fallback if config module not available
@@ -2458,7 +2458,7 @@ class XGBoostForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('xgboost')
         except ImportError:
             # Fallback if config module not available
@@ -3007,7 +3007,7 @@ class LightGBMForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('lightgbm')
         except ImportError:
             # Fallback if config module not available
@@ -3625,7 +3625,7 @@ class CatBoostForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('catboost')
         except ImportError:
             # Fallback if config module not available
@@ -4267,7 +4267,7 @@ class LSTMForecaster(BaseForecaster):
         
         # Get configuration
         try:
-            from forecasting_config import get_model_config
+            from .forecasting_config import get_model_config
             config = get_model_config('lstm')
         except ImportError:
             # Fallback if config module not available
