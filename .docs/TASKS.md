@@ -57,18 +57,19 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] **Frontend:** Delete components and instances that are related to "Portfolio Analysis" feature
 - [x] **Backend:** Delete files and instances that are related to "Portfolio Analysis" feature
 
-### Replacing Prophet
-- [x] Research and find alternative model for Prophet, enhancing the accuracy of the forecast at the cost of speed
-
 ### Documentation
 - [x] Create `README.md`, `REQUIREMENTS.md`, `DESIGN.md`, and `TASKS.md`.
 - [x] Keep documentation updated with new features and architectural changes.
 
-## TODO
-
-### GPU Accelaration
-- [ ] Research CuPy/Numba for GPU-accelerated matrix operations.
-- [ ] Implement GPU-based covariance matrix calculations.
-
-### Algorithmic Improvement
-- [ ] Research a way to improve forecast speed
+## 🚧 Planned Future Optimizations(for portfolio optimizer)
+- [ ] Memory-intensive pre-processing and model pre-training.
+- [ ] **Ultra-Parallel Processing**
+    - [x] **Hybrid Processing Model:**
+        - [x] Use `ProcessPoolExecutor` for CPU-intensive model training (`Prophet`, `ARIMA`).
+        - [x] Use `ThreadPoolExecutor` for I/O-bound tasks (API calls, cache operations).
+        - [x] Integrate `asyncio` for non-blocking I/O.
+    - [ ] **GPU Acceleration (Optional):**
+        - [ ] Research `CuPy`/`Numba` for GPU-accelerated matrix operations.
+        - [ ] Implement GPU-based covariance matrix calculations.
+- [ ] Optimized data structures and predictive prefetching.
+- [ ] Load test caching system and analyze hit ratios.
