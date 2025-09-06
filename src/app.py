@@ -285,11 +285,6 @@ def optimize_portfolio_endpoint():
 
 @app.route('/api/stock-screener', methods=['POST'])
 def stock_screener_endpoint():
-    """
-    API endpoint to screen for stocks based on a set of filters.
-    Expects a JSON body with a 'filters' key, which is a dictionary
-    of filter criteria for finvizfinance.
-    """
     data = request.get_json()
     if not data or 'filters' not in data:
         return jsonify({"error": "Request must be JSON and contain a 'filters' key"}), 400

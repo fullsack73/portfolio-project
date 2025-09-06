@@ -61,15 +61,13 @@ This file outlines the tasks completed during the development of the portfolio a
 - [x] Create `README.md`, `REQUIREMENTS.md`, `DESIGN.md`, and `TASKS.md`.
 - [x] Keep documentation updated with new features and architectural changes.
 
-## 🚧 Planned Future Optimizations(for portfolio optimizer)
-- [ ] Memory-intensive pre-processing and model pre-training.
-- [ ] **Ultra-Parallel Processing**
-    - [x] **Hybrid Processing Model:**
-        - [x] Use `ProcessPoolExecutor` for CPU-intensive model training (`Prophet`, `ARIMA`).
-        - [x] Use `ThreadPoolExecutor` for I/O-bound tasks (API calls, cache operations).
-        - [x] Integrate `asyncio` for non-blocking I/O.
-    - [ ] **GPU Acceleration (Optional):**
-        - [ ] Research `CuPy`/`Numba` for GPU-accelerated matrix operations.
-        - [ ] Implement GPU-based covariance matrix calculations.
-- [ ] Optimized data structures and predictive prefetching.
-- [ ] Load test caching system and analyze hit ratios.
+## TODO
+
+### Replacing Prophet
+
+Replace current procedure of Prophet + ensemble in port opt for enhanced accuracy.
+Candidates are: XGBoost, ARIMA, LSTM
+
+- [ ] 1. Create Module for ML models
+- [ ] 2. Implement to current pipeline
+    - Make Module that handles multiple tickers at once as a batch
