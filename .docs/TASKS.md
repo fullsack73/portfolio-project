@@ -66,8 +66,11 @@ This file outlines the tasks completed during the development of the portfolio a
 ### Replacing Prophet
 
 Replace current procedure of Prophet + ensemble in port opt for enhanced accuracy.
-Candidates are: XGBoost, ARIMA, LSTM
+Candidates are: XGBoost, ARIMA, LSTM and possibly Fedot
 
 - [ ] 1. Create Module for ML models
+    - [ ] ARIMA
+    - [ ] XGBoost
+    - [ ] LSTM
 - [ ] 2. Implement to current pipeline
     - Make Module that handles multiple tickers at once as a batch
