@@ -58,43 +58,43 @@ Assigned roles: api-engineer, testing-engineer
 **Assigned implementer:** api-engineer
 **Dependencies:** Task Group 1
 
-- [ ] 2.0 Complete portfolio optimization integration
-  - [ ] 2.1 Write 2-8 focused tests for integration
+- [x] 2.0 Complete portfolio optimization integration
+  - [x] 2.1 Write 2-8 focused tests for integration
     - Limit to 2-8 highly focused tests maximum
     - Test only critical integration points (e.g., ml_forecast_returns() output format, multicore processing, cache integration, MPT fallback)
     - Skip exhaustive testing of all scenarios
-  - [ ] 2.2 Create ml_forecast_returns() function in portfolio_optimization.py
+  - [x] 2.2 Create ml_forecast_returns() function in portfolio_optimization.py
     - Replace forecast_returns() with new ML-based implementation
     - Accept DataFrame input, return pandas Series of expected returns
     - Use ProcessPoolExecutor for parallel ticker processing
     - Follow existing pattern from lines 325-340
     - Integrate ModelSelector for each ticker
-  - [ ] 2.3 Implement model caching strategy
+  - [x] 2.3 Implement model caching strategy
     - Add @cached decorator for trained models (l1_ttl=3600, l2_ttl=86400)
     - Add @cached decorator for predictions (l1_ttl=900, l2_ttl=14400)
     - Follow existing cache_manager patterns
     - Implement cache key generation for models and predictions
-  - [ ] 2.4 Implement multicore processing
+  - [x] 2.4 Implement multicore processing
     - Use ProcessPoolExecutor(max_workers=cpu_count()) for training
     - Process each ticker independently with best model
     - Handle partial failures gracefully
     - Aggregate results into single pandas Series
-  - [ ] 2.5 Add fallback mechanism to MPT
+  - [x] 2.5 Add fallback mechanism to MPT
     - Keep existing forecast_returns() as fallback_forecast_returns()
     - Wrap ml_forecast_returns() in try/except block
     - Fall back to lightweight/Prophet method on ML failure
     - Log fallback events with logger.warning()
-  - [ ] 2.6 Update optimize_portfolio() function
+  - [x] 2.6 Update optimize_portfolio() function
     - Replace forecast_returns() call with ml_forecast_returns()
     - Maintain all existing parameters and signature
     - Ensure DataFrame alignment logic still works
     - Keep existing error handling patterns
-  - [ ] 2.7 Add performance metrics logging
+  - [x] 2.7 Add performance metrics logging
     - Log R² and RMSE during model training
     - Log model selection decisions per ticker
     - Log processing time for multicore execution
     - Log cache hit/miss rates
-  - [ ] 2.8 Ensure integration tests pass
+  - [x] 2.8 Ensure integration tests pass
     - Run ONLY the 2-8 tests written in 2.1
     - Verify ml_forecast_returns() produces compatible output
     - Verify optimize_portfolio() still works end-to-end
