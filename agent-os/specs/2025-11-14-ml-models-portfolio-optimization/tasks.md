@@ -12,35 +12,35 @@ Assigned roles: api-engineer, testing-engineer
 **Assigned implementer:** api-engineer
 **Dependencies:** None
 
-- [ ] 1.0 Complete ML models implementation
-  - [ ] 1.1 Write 2-8 focused tests for ML models
+- [x] 1.0 Complete ML models implementation
+  - [x] 1.1 Write 2-8 focused tests for ML models
     - Limit to 2-8 highly focused tests maximum
     - Test only critical model behaviors (e.g., LSTM forecast output format, ARIMA fallback, XGBoost feature engineering, model selection logic)
     - Skip exhaustive coverage of all edge cases
-  - [ ] 1.2 Extend ARIMA class in forecast_models.py
+  - [x] 1.2 Extend ARIMA class in forecast_models.py
     - Add volatility forecasting capability
     - Extend forecast() method to return both returns and risk
     - Maintain existing fallback pattern for failed forecasts
     - Keep suppress_warnings and seasonal parameters
-  - [ ] 1.3 Create LSTMModel class in forecast_models.py
+  - [x] 1.3 Create LSTMModel class in forecast_models.py
     - Implement __init__() with model configuration (layers, units, dropout)
     - Implement train() method for time series training
     - Implement forecast() method returning expected annual return
     - Use TensorFlow/Keras for LSTM implementation
     - Add error handling with fallback to simpler model
-  - [ ] 1.4 Create XGBoostModel class in forecast_models.py
+  - [x] 1.4 Create XGBoostModel class in forecast_models.py
     - Implement feature engineering pipeline (returns, volume, technical indicators)
     - Implement train() method with hyperparameter tuning
     - Implement forecast() method returning expected annual return
     - Use xgboost library for gradient boosting
     - Add error handling with fallback mechanism
-  - [ ] 1.5 Create ModelSelector class in forecast_models.py
+  - [x] 1.5 Create ModelSelector class in forecast_models.py
     - Implement validate_model() to calculate R², RMSE metrics
     - Implement select_best_model() to auto-select best performer
     - Train all three models (LSTM, ARIMA, XGBoost) on validation set
     - Return best model based on validation metrics
     - Log model selection decisions
-  - [ ] 1.6 Ensure ML models tests pass
+  - [x] 1.6 Ensure ML models tests pass
     - Run ONLY the 2-8 tests written in 1.1
     - Verify each model produces valid forecast output
     - Do NOT run the entire test suite at this stage

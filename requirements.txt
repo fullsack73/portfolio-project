@@ -9,3 +9,5 @@ PyPortfolioOpt
 finvizfinance
 psutil
 pmdarima
+tensorflow
+xgboost
