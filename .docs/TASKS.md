@@ -74,3 +74,4 @@ Candidates are: XGBoost, ARIMA, LSTM and possibly Fedot
     - [ ] LSTM
 - [ ] 2. Implement to current pipeline
     - Make Module that handles multiple tickers at once as a batch
+- [ ] 3. Implement multicore processing
