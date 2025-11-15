@@ -427,9 +427,9 @@ def _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=False):
         best_model, metrics = _train_and_select_model(ticker, ticker_data)
         
         if best_model is None:
-            # Fallback to lightweight methods
-            logger.warning(f"ML training failed for {ticker}, using lightweight fallback")
-            return _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=True)
+            # No fallback in ML-only mode; return default small prior
+            logger.warning(f"ML training failed for {ticker}, no fallback (ML-only mode)")
+            return ticker, 0.02
         
         # Get forecast from best model
         if isinstance(best_model, ARIMA):
@@ -447,9 +447,9 @@ def _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=False):
             
     except Exception as e:
         logger.error(f"ML forecasting failed for {ticker}: {e}")
-        return ticker, 0.08
+        return ticker, 0.02
 
-def ml_forecast_returns(data, use_lightweight=True):
+def ml_forecast_returns(data, use_lightweight=False):
     """
     Forecast expected returns using ML models with multicore processing.
     
@@ -461,7 +461,7 @@ def ml_forecast_returns(data, use_lightweight=True):
         pandas Series with expected annual returns for each ticker
     """
     start_time = time.time()
-    method = "LIGHTWEIGHT" if use_lightweight else "ML"
+    method = "ML" if not use_lightweight else "LIGHTWEIGHT"
     logger.info(f"Starting PARALLEL {method} forecasting for {len(data.columns)} tickers")
     
     # Determine optimal number of workers
@@ -562,15 +562,9 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
 
     # Calculate expected returns using ML-based forecasting with fallback to lightweight
     logger.info(f"Starting ML forecasting for {len(data.columns)} tickers: {list(data.columns)}")
-    try:
-        # Use ML forecasting (lightweight mode by default for speed)
-        mu = ml_forecast_returns(data, use_lightweight=True)
-        logger.info(f"ML forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
-    except Exception as e:
-        logger.error(f"ML forecasting failed: {e}. Falling back to Prophet/MPT method")
-        # Fallback to original forecast method
-        mu = fallback_forecast_returns(data, use_lightweight=True, prophet_ratio=0.1)
-        logger.info(f"Fallback forecasting completed for {len(mu)} tickers")
+    # Strict ML-only forecasting
+    mu = ml_forecast_returns(data, use_lightweight=False)
+    logger.info(f"ML forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
     
     # Check for any missing tickers
     missing_tickers = set(data.columns) - set(mu.index)
