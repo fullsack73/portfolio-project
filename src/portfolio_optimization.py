@@ -19,14 +19,8 @@ from cache_manager import (
 from ticker_lists import get_ticker_group
 from forecast_models import ModelSelector, ARIMA, LSTMModel, XGBoostModel
 
-# Define a dummy function to suppress logging
-# def silent_logger(*args, **kwargs):
-#     pass
-
-# Monkey-patch the logger to silence it
-# cmdstanpy.utils.get_logger = silent_logger
-
 # Configure logging for this module
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Re-enabled log suppression after debugging
@@ -95,7 +89,8 @@ def get_stock_data(tickers, start_date, end_date):
                     logger.info(f"GET_STOCK_DATA: Extracted Close data shape: {close_data.shape}")
         
         # Clean the data
-        close_data = close_data.ffill().dropna()
+        # Only drop rows that are entirely NaN across all tickers; keep partial data for per-ticker cleaning later
+        close_data = close_data.ffill().dropna(how='all')
         logger.info(f"GET_STOCK_DATA: Data cleaned, final shape: {close_data.shape}")
         
         # Ensure we have data
