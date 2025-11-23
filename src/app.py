@@ -10,7 +10,11 @@ import lightgbm as lgb
 import pandas as pd
 import psutil
 from financial_statement import get_financial_ratios
-from portfolio_optimization import optimize_portfolio
+from portfolio_optimization import (
+    optimize_portfolio,
+    load_portfolio_result,
+    list_saved_portfolios
+)
 from ticker_lists import get_ticker_group
 from stock_screener import search_stocks
 
@@ -266,6 +270,9 @@ def optimize_portfolio_endpoint():
     risk_free_rate = data.get('risk_free_rate')
     target_return = data.get('target_return')
     risk_tolerance = data.get('risk_tolerance')
+    portfolio_id = data.get('portfolio_id')
+    persist_result = bool(data.get('persist_result'))
+    load_if_available = bool(data.get('load_if_available'))
 
     try:
         optimized_portfolio = optimize_portfolio(
@@ -275,13 +282,32 @@ def optimize_portfolio_endpoint():
             ticker_group=ticker_group, 
             tickers=tickers, 
             target_return=target_return, 
-            risk_tolerance=risk_tolerance
+            risk_tolerance=risk_tolerance,
+            portfolio_id=portfolio_id,
+            persist_result=persist_result,
+            load_if_available=load_if_available
         )
         return jsonify(optimized_portfolio)
     except ValueError as ve:
         return jsonify({'error': str(ve)}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio-results', methods=['GET'])
+def list_portfolio_results_endpoint():
+    try:
+        return jsonify({'portfolio_ids': list_saved_portfolios()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio-results/<portfolio_id>', methods=['GET'])
+def get_portfolio_result_endpoint(portfolio_id):
+    result = load_portfolio_result(portfolio_id)
+    if not result:
+        return jsonify({'error': f'Portfolio {portfolio_id} not found'}), 404
+    return jsonify(result)
 
 @app.route('/api/stock-screener', methods=['POST'])
 def stock_screener_endpoint():

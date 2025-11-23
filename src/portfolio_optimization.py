@@ -1,5 +1,9 @@
+import json
 import logging
 from logging import NullHandler
+from pathlib import Path
+import time
+
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -7,8 +11,6 @@ from pypfopt import EfficientFrontier, risk_models, expected_returns
 from pypfopt.risk_models import CovarianceShrinkage
 from prophet import Prophet
 import warnings
-import logging
-import time
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from scipy.stats import expon, linregress
 from sklearn.linear_model import LinearRegression
@@ -30,6 +32,77 @@ logging.getLogger('cmdstanpy').setLevel(logging.WARNING)
 prophet_logger = logging.getLogger('prophet')
 prophet_logger.addHandler(NullHandler())
 prophet_logger.propagate = False
+
+RESULTS_DIR = Path("logs/portfolio_results")
+
+
+def _ensure_results_dir():
+    """Create persistence directory if it does not exist."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _to_serializable(value):
+    """Convert numpy/pandas objects to JSON-serializable primitives."""
+    if isinstance(value, (np.generic, np.float32, np.float64)):
+        return float(value)
+    if isinstance(value, (np.integer, np.int32, np.int64)):
+        return int(value)
+    if isinstance(value, (pd.Series, pd.Index)):
+        return [_to_serializable(v) for v in value.tolist()]
+    if isinstance(value, dict):
+        return {k: _to_serializable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_to_serializable(v) for v in value]
+    return value
+
+
+def save_portfolio_result(portfolio_id, result, metadata=None):
+    """Persist portfolio optimization output and metadata to disk."""
+    if not portfolio_id:
+        raise ValueError("portfolio_id is required to save results")
+    if not isinstance(result, dict):
+        raise ValueError("result must be a dictionary")
+
+    payload = {
+        "portfolio_id": portfolio_id,
+        "result": _to_serializable(result),
+        "metadata": _to_serializable(metadata or {}),
+        "saved_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    }
+
+    _ensure_results_dir()
+    output_path = RESULTS_DIR / f"{portfolio_id}.json"
+    with open(output_path, "w", encoding="utf-8") as file:
+        json.dump(payload, file, indent=2)
+    logger.info(f"Saved portfolio result to {output_path}")
+
+
+def load_portfolio_result(portfolio_id):
+    """Load a previously saved portfolio optimization result."""
+    if not portfolio_id:
+        raise ValueError("portfolio_id is required to load results")
+
+    output_path = RESULTS_DIR / f"{portfolio_id}.json"
+    if not output_path.exists():
+        logger.info(f"No saved portfolio result found for {portfolio_id}")
+        return None
+
+    with open(output_path, "r", encoding="utf-8") as file:
+        payload = json.load(file)
+
+    result = payload.get("result", {})
+    result["metadata"] = payload.get("metadata", {})
+    result["saved_at"] = payload.get("saved_at")
+    result["portfolio_id"] = payload.get("portfolio_id", portfolio_id)
+    logger.info(f"Loaded portfolio result from {output_path}")
+    return result
+
+
+def list_saved_portfolios():
+    """Return available saved portfolio identifiers."""
+    if not RESULTS_DIR.exists():
+        return []
+    return sorted(p.stem for p in RESULTS_DIR.glob("*.json"))
 
 def sanitize_tickers(tickers):
     """Sanitize ticker symbols for yfinance compatibility with special case handling."""
@@ -515,16 +588,23 @@ def ml_forecast_returns(data, use_lightweight=False):
         return fallback_forecast_returns(data, use_lightweight=True, prophet_ratio=0.0)
 
 @cached(l1_ttl=600, l2_ttl=3600)  # 10 min L1, 1 hour L2 cache for portfolio optimization
-def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
-    """
-    Optimize portfolio based on user preferences using PyPortfolioOpt with aggressive caching.
-    """
+def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None,
+                       target_return=None, risk_tolerance=None, portfolio_id=None,
+                       persist_result=False, load_if_available=False):
+    """Optimize portfolio and optionally persist or reuse saved results."""
     # Log cache performance at start of optimization
     cache = get_cache()
     cache_stats = cache.stats()
     logger.info(f"CACHE PERFORMANCE: L1 Hit: {cache_stats['hit_ratios']['l1']:.1%}, L2 Hit: {cache_stats['hit_ratios']['l2']:.1%}, Overall: {cache_stats['hit_ratios']['overall']:.1%}")
     logger.info(f"CACHE MEMORY: {cache_stats['l1_cache']['memory_usage_mb']:.1f}MB / {cache_stats['l1_cache']['memory_limit_mb']:.1f}MB ({cache_stats['l1_cache']['memory_utilization']:.1%})")
     
+    # Short-circuit if saved result should be reused
+    if portfolio_id and load_if_available:
+        saved_result = load_portfolio_result(portfolio_id)
+        if saved_result:
+            logger.info(f"Returning previously saved result for {portfolio_id}")
+            return saved_result
+
     # Get tickers from the selected group or use the provided list
     if tickers:
         pass
@@ -621,10 +701,27 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
                 logger.error(f"An error occurred while fetching the latest price for {ticker}: {e}")
 
 
-    return {
+    result_payload = {
         "weights": final_weights,
         "return": optimized_return,
         "risk": optimized_std_dev,
         "sharpe_ratio": optimized_sharpe_ratio,
         "prices": latest_prices
     }
+
+    if portfolio_id and persist_result:
+        metadata = {
+            "start_date": str(start_date),
+            "end_date": str(end_date),
+            "risk_free_rate": risk_free_rate,
+            "ticker_group": ticker_group,
+            "tickers": tickers,
+            "target_return": target_return,
+            "risk_tolerance": risk_tolerance
+        }
+        save_portfolio_result(portfolio_id, result_payload, metadata)
+        result_payload["portfolio_id"] = portfolio_id
+    elif persist_result and not portfolio_id:
+        logger.warning("persist_result is True but portfolio_id is missing; skipping save")
+
+    return result_payload

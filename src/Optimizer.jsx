@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 
@@ -16,6 +16,10 @@ const Optimizer = () => {
     const [investmentAmount, setInvestmentAmount] = useState('');
     const [allocation, setAllocation] = useState(null);
     const [customTickers, setCustomTickers] = useState([]);
+    const [portfolioId, setPortfolioId] = useState('');
+    const [persistResult, setPersistResult] = useState(false);
+    const [loadIfAvailable, setLoadIfAvailable] = useState(false);
+    const portfolioFileInputRef = useRef(null);
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -38,11 +42,60 @@ const Optimizer = () => {
             const amount = totalInvestment * weight;
             // Assuming we can get price data, for now we'll use a placeholder
             // In a real scenario, you'd fetch current prices for each ticker
-            const price = optimizedPortfolio.prices[ticker] || 1; // Placeholder price
+            const price = optimizedPortfolio.prices?.[ticker] ?? 1; // Placeholder price
             const shares = amount / price;
             return { ticker, amount, shares };
         });
         setAllocation(allocated);
+    };
+
+    const handleDownloadPortfolio = () => {
+        if (!optimizedPortfolio) return;
+        const payload = {
+            ...optimizedPortfolio,
+            portfolio_id: optimizedPortfolio.portfolio_id || portfolioId || `portfolio_${Date.now()}`
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${payload.portfolio_id}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const triggerPortfolioUpload = () => {
+        portfolioFileInputRef.current?.click();
+    };
+
+    const handlePortfolioUpload = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                if (!parsed || typeof parsed !== 'object' || !parsed.weights) {
+                    throw new Error('Invalid portfolio file: missing weights');
+                }
+                setOptimizedPortfolio(parsed);
+                setAllocation(null);
+                setError(null);
+                if (parsed.portfolio_id) {
+                    setPortfolioId(parsed.portfolio_id);
+                }
+            } catch (uploadError) {
+                setError(uploadError.message || 'Failed to load portfolio file');
+            }
+        };
+        reader.onerror = () => setError('Failed to read portfolio file');
+        reader.readAsText(file);
+
+        // Reset input value to allow uploading the same file again if needed
+        event.target.value = '';
     };
 
     const handleSubmit = async (e) => {
@@ -50,6 +103,7 @@ const Optimizer = () => {
         setLoading(true);
         setError(null);
         setOptimizedPortfolio(null);
+        setAllocation(null);
 
         try {
             const payload = {
@@ -58,12 +112,18 @@ const Optimizer = () => {
                 risk_free_rate: parseFloat(riskFreeRate) / 100,
                 target_return: targetReturn ? parseFloat(targetReturn) / 100 : null,
                 risk_tolerance: riskTolerance ? parseFloat(riskTolerance) / 100 : null,
+                persist_result: persistResult,
+                load_if_available: loadIfAvailable,
             };
 
             if (tickerGroup === 'CUSTOM') {
                 payload.tickers = customTickers;
             } else {
                 payload.ticker_group = tickerGroup;
+            }
+
+            if (portfolioId.trim()) {
+                payload.portfolio_id = portfolioId.trim();
             }
 
             const response = await axios.post('http://127.0.0.1:5000/api/optimize-portfolio', payload);
@@ -73,6 +133,9 @@ const Optimizer = () => {
                 setOptimizedPortfolio(null);
             } else {
                 setOptimizedPortfolio(response.data);
+                if (!portfolioId && response.data.portfolio_id) {
+                    setPortfolioId(response.data.portfolio_id);
+                }
             }
         } catch (err) {
             setError(err.response ? err.response.data.error : 'An error occurred');
@@ -105,7 +168,7 @@ const Optimizer = () => {
                         <label>{t('optimizer.endDate')}</label>
                         <input className="optimizer-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
                     </div>
-                                        <div className="optimizer-form-group">
+                    <div className="optimizer-form-group">
                         <label>{t('optimizer.riskFreeRate')}</label>
                         <div className="input-with-symbol">
                             <input className="optimizer-input" type="number" value={riskFreeRate} onChange={(e) => setRiskFreeRate(e.target.value)} placeholder="e.g., 2" required />
@@ -123,6 +186,34 @@ const Optimizer = () => {
                             <input className="optimizer-input" type="number" value={riskTolerance} onChange={(e) => setRiskTolerance(e.target.value)} placeholder="e.g., 15" />
                         </div>
                     </div>
+                    <div className="optimizer-form-group">
+                        <label>{t('optimizer.portfolioId', 'Portfolio ID')}</label>
+                        <input
+                            className="optimizer-input"
+                            type="text"
+                            value={portfolioId}
+                            onChange={(e) => setPortfolioId(e.target.value)}
+                            placeholder={t('optimizer.portfolioIdPlaceholder', 'Optional identifier to reuse')}
+                        />
+                        <div className="optimizer-checkbox-row">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={persistResult}
+                                    onChange={(e) => setPersistResult(e.target.checked)}
+                                />
+                                <span>{t('optimizer.persistResult', 'Save on server')}</span>
+                            </label>
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    checked={loadIfAvailable}
+                                    onChange={(e) => setLoadIfAvailable(e.target.checked)}
+                                />
+                                <span>{t('optimizer.loadSaved', 'Load saved result')}</span>
+                            </label>
+                        </div>
+                    </div>
                     <button type="submit" className="optimizer-submit-button" disabled={loading}>
                         {loading ? t('common.loading') : t('optimizer.submit')}
                     </button>
@@ -135,6 +226,30 @@ const Optimizer = () => {
                 <>
                     <div className="optimizer-results-container">
                         <h3>{t('optimizer.results')}</h3>
+                        <div className="optimizer-actions-row">
+                            <button
+                                className="optimizer-secondary-button"
+                                onClick={handleDownloadPortfolio}
+                                disabled={!optimizedPortfolio}
+                                type="button"
+                            >
+                                {t('optimizer.downloadPortfolio', 'Download JSON')}
+                            </button>
+                            <button
+                                className="optimizer-secondary-button"
+                                onClick={triggerPortfolioUpload}
+                                type="button"
+                            >
+                                {t('optimizer.loadPortfolio', 'Load JSON')}
+                            </button>
+                            <input
+                                type="file"
+                                accept="application/json"
+                                ref={portfolioFileInputRef}
+                                style={{ display: 'none' }}
+                                onChange={handlePortfolioUpload}
+                            />
+                        </div>
                         <div className="optimizer-results-grid">
                             <div className="optimizer-result-card">
                                 <h4>{t('optimizer.return')}</h4>
