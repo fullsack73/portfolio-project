@@ -142,5 +142,4 @@ wheel==0.45.1
 wrapt==1.17.3
 xgboost==3.0.4
 yfinance==0.2.66
-yt-dlp==2025.6.9
 zstandard @ file:///opt/miniconda3/conda-bld/zstandard_1758189077286/work
