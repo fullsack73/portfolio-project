@@ -6,6 +6,8 @@ scikit-learn
 lightgbm
 pandas
 PyPortfolioOpt
-prophet
 finvizfinance
 psutil
+pmdarima
+tensorflow
+xgboost

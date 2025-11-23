@@ -17,15 +17,10 @@ from cache_manager import (
     cache_forecast_key, cache_portfolio_key
 )
 from ticker_lists import get_ticker_group
-
-# Define a dummy function to suppress logging
-# def silent_logger(*args, **kwargs):
-#     pass
-
-# Monkey-patch the logger to silence it
-# cmdstanpy.utils.get_logger = silent_logger
+from forecast_models import ModelSelector, ARIMA, LSTMModel, XGBoostModel
 
 # Configure logging for this module
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Re-enabled log suppression after debugging
@@ -94,7 +89,8 @@ def get_stock_data(tickers, start_date, end_date):
                     logger.info(f"GET_STOCK_DATA: Extracted Close data shape: {close_data.shape}")
         
         # Clean the data
-        close_data = close_data.ffill().dropna()
+        # Only drop rows that are entirely NaN across all tickers; keep partial data for per-ticker cleaning later
+        close_data = close_data.ffill().dropna(how='all')
         logger.info(f"GET_STOCK_DATA: Data cleaned, final shape: {close_data.shape}")
         
         # Ensure we have data
@@ -362,6 +358,162 @@ def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1):
     
     return pd.Series(forecasts)
 
+# Rename existing forecast_returns to fallback_forecast_returns for fallback
+fallback_forecast_returns = forecast_returns
+
+@cached(l1_ttl=3600, l2_ttl=86400)  # 1 hour L1, 1 day L2 cache for trained models
+def _train_and_select_model(ticker, ticker_data):
+    """Train ML models and select best performer for a single ticker with caching."""
+    try:
+        prices = ticker_data.values
+        
+        # Validate data
+        if len(prices) < 100:
+            logger.warning(f"Insufficient data for ML training on {ticker}: {len(prices)} points")
+            return None, None
+        
+        valid_prices = prices[~np.isnan(prices)]
+        if len(valid_prices) < 100:
+            logger.warning(f"Too many NaN values for {ticker}")
+            return None, None
+        
+        # Split into train/validation
+        train_size = int(len(valid_prices) * 0.8)
+        train_data = valid_prices[:train_size]
+        val_data = valid_prices[train_size:]
+        
+        # Use ModelSelector to find best model
+        start_time = time.time()
+        selector = ModelSelector()
+        best_model, metrics = selector.select_best_model(train_data, val_data)
+        elapsed = time.time() - start_time
+        
+        logger.info(f"ML Model Selection for {ticker}: {metrics['model_name']} "
+                   f"(R²={metrics['r2']:.4f}, RMSE={metrics['rmse']:.6f}) "
+                   f"in {elapsed:.2f}s")
+        
+        return best_model, metrics
+        
+    except Exception as e:
+        logger.error(f"ML model training failed for {ticker}: {e}")
+        return None, None
+
+@cached(l1_ttl=900, l2_ttl=14400)  # 15 min L1, 4 hour L2 cache for predictions
+def _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=False):
+    """Forecast returns for single ticker using ML models with caching."""
+    try:
+        prices = ticker_data.values
+        
+        # Validate data
+        if len(prices) < 10:
+            logger.warning(f"Insufficient data for {ticker}: {len(prices)} points")
+            return ticker, 0.08
+        
+        # For lightweight mode, use fast forecasting
+        if use_lightweight:
+            valid_prices = prices[~np.isnan(prices)]
+            
+            # Use ensemble of lightweight methods
+            exp_forecast = _exponential_smoothing_forecast(valid_prices)
+            trend_forecast = _linear_trend_forecast(valid_prices)
+            vol_forecast = _historical_volatility_adjusted_forecast(valid_prices)
+            
+            forecast_value = (0.4 * exp_forecast + 0.3 * trend_forecast + 0.3 * vol_forecast)
+            forecast_value = np.clip(forecast_value, -0.5, 1.0)
+            
+            return ticker, forecast_value
+        
+        # ML mode: train and select best model
+        best_model, metrics = _train_and_select_model(ticker, ticker_data)
+        
+        if best_model is None:
+            # No fallback in ML-only mode; return default small prior
+            logger.warning(f"ML training failed for {ticker}, no fallback (ML-only mode)")
+            return ticker, 0.02
+        
+        # Get forecast from best model
+        if isinstance(best_model, ARIMA):
+            expected_return, volatility = best_model.forecast(prices[~np.isnan(prices)])
+            logger.info(f"ARIMA forecast for {ticker}: return={expected_return:.4f}, vol={volatility:.4f}")
+            return ticker, expected_return
+        elif isinstance(best_model, (LSTMModel, XGBoostModel)):
+            forecast = best_model.forecast()
+            logger.info(f"{metrics['model_name']} forecast for {ticker}: {forecast:.4f}")
+            return ticker, forecast
+        else:
+            # Fallback
+            logger.warning(f"Unknown model type for {ticker}, using default")
+            return ticker, 0.08
+            
+    except Exception as e:
+        logger.error(f"ML forecasting failed for {ticker}: {e}")
+        return ticker, 0.02
+
+def ml_forecast_returns(data, use_lightweight=False):
+    """
+    Forecast expected returns using ML models with multicore processing.
+    
+    Args:
+        data: DataFrame with stock prices (dates as index, tickers as columns)
+        use_lightweight: If True, use fast ensemble methods; if False, use full ML models
+        
+    Returns:
+        pandas Series with expected annual returns for each ticker
+    """
+    start_time = time.time()
+    method = "ML" if not use_lightweight else "LIGHTWEIGHT"
+    logger.info(f"Starting PARALLEL {method} forecasting for {len(data.columns)} tickers")
+    
+    # Determine optimal number of workers
+    import os
+    max_workers = min(os.cpu_count() or 4, len(data.columns), 8)
+    logger.info(f"Using {max_workers} parallel workers for {method} forecasting")
+    
+    forecasts = {}
+    
+    try:
+        # Use ProcessPoolExecutor for CPU-bound ML tasks
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all forecasting tasks
+            future_to_ticker = {}
+            for ticker in data.columns:
+                future = executor.submit(_ml_forecast_single_ticker, ticker, data[ticker], use_lightweight)
+                future_to_ticker[future] = ticker
+            
+            # Collect results as they complete
+            completed_count = 0
+            for future in as_completed(future_to_ticker):
+                ticker = future_to_ticker[future]
+                try:
+                    result_ticker, forecast_value = future.result()
+                    forecasts[result_ticker] = forecast_value
+                    completed_count += 1
+                    
+                    # Progress logging
+                    if completed_count % 25 == 0 or completed_count == len(data.columns):
+                        logger.info(f"{method} forecasting progress: {completed_count}/{len(data.columns)} completed")
+                        
+                except Exception as exc:
+                    logger.error(f"{method} forecasting exception for {ticker}: {exc}")
+                    forecasts[ticker] = 0.08  # Default fallback
+        
+        elapsed_time = time.time() - start_time
+        logger.info(f"PARALLEL {method} forecasting completed in {elapsed_time:.2f}s for {len(forecasts)} tickers")
+        
+        # Log cache performance
+        cache = get_cache()
+        cache_stats = cache.stats()
+        logger.info(f"CACHE HIT RATES: L1={cache_stats['hit_ratios']['l1']:.1%}, "
+                   f"L2={cache_stats['hit_ratios']['l2']:.1%}, "
+                   f"Overall={cache_stats['hit_ratios']['overall']:.1%}")
+        
+        return pd.Series(forecasts)
+        
+    except Exception as e:
+        logger.error(f"ML forecasting failed critically: {e}. Falling back to lightweight methods.")
+        # Fallback to original forecast_returns
+        return fallback_forecast_returns(data, use_lightweight=True, prophet_ratio=0.0)
+
 @cached(l1_ttl=600, l2_ttl=3600)  # 10 min L1, 1 hour L2 cache for portfolio optimization
 def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None, target_return=None, risk_tolerance=None):
     """
@@ -408,11 +560,11 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     tickers = data.columns.tolist()
     logger.info(f"PIPELINE STAGE 2 FINAL: Proceeding with {len(tickers)} tickers for forecasting")
 
-    # Calculate expected returns using lightweight ML forecast by default
-    logger.info(f"Starting LIGHTWEIGHT forecasting for {len(data.columns)} tickers: {list(data.columns)}")
-    mu = forecast_returns(data, use_lightweight=True, prophet_ratio=0.1)  # Use Prophet for only 10% of tickers
-    logger.info(f"Forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
-    logger.info(f"Performance: Lightweight forecasting used for ~90% of tickers, Prophet for ~10%")
+    # Calculate expected returns using ML-based forecasting with fallback to lightweight
+    logger.info(f"Starting ML forecasting for {len(data.columns)} tickers: {list(data.columns)}")
+    # Strict ML-only forecasting
+    mu = ml_forecast_returns(data, use_lightweight=False)
+    logger.info(f"ML forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
     
     # Check for any missing tickers
     missing_tickers = set(data.columns) - set(mu.index)

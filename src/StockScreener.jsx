@@ -18,7 +18,7 @@ const StockScreener = () => {
         { metric: 'P/E', operator: 'Under', value: '15' },
         { metric: 'P/B', operator: 'Under', value: '2' },
     ]);
-    const [tickerGroup, setTickerGroup] = useState('S&P 500');
+    const [tickerGroup, setTickerGroup] = useState('Any');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -108,9 +108,11 @@ const StockScreener = () => {
             <div className="screener-controls">
                 <div className="control-group">
                     <select className="optimizer-select" value={tickerGroup} onChange={(e) => setTickerGroup(e.target.value)}>
+                        <option value="Any">Any</option>
                         <option value="S&P 500">S&P 500</option>
-                        <option value="Dow Jones">Dow Jones</option>
-                        <option value="CUSTOM">{t('optimizer.custom')}</option>
+                        <option value="NASDAQ 100">NASDAQ 100</option>
+                        <option value="DJIA">Dow Jones</option>
+                        <option value="RUSSELL 2000">RUSSELL 2000</option>
                     </select>
                     {tickerGroup === 'CUSTOM' && (
                         <input type="file" accept=".csv" onChange={handleFileUpload} />
