@@ -14,6 +14,7 @@ import warnings
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from scipy.stats import expon, linregress
 from sklearn.linear_model import LinearRegression
+import gc
 from cache_manager import (
     get_cache, cached, cache_stock_data_key, 
     cache_forecast_key, cache_portfolio_key
@@ -434,9 +435,13 @@ def forecast_returns(data, use_lightweight=True, prophet_ratio=0.1):
 # Rename existing forecast_returns to fallback_forecast_returns for fallback
 fallback_forecast_returns = forecast_returns
 
-@cached(l1_ttl=3600, l2_ttl=86400)  # 1 hour L1, 1 day L2 cache for trained models
+# NOTE: 모델 객체를 캐시하지 않음 - 메모리 누수 방지를 위해 forecast 결과만 캐시
 def _train_and_select_model(ticker, ticker_data):
-    """Train ML models and select best performer for a single ticker with caching."""
+    """Train ML models and select best performer for a single ticker.
+    
+    WARNING: 모델 객체는 캐시하지 않습니다. 메모리 누수를 방지하기 위해
+    forecast 결과만 별도로 캐시됩니다.
+    """
     try:
         prices = ticker_data.values
         
@@ -470,10 +475,16 @@ def _train_and_select_model(ticker, ticker_data):
     except Exception as e:
         logger.error(f"ML model training failed for {ticker}: {e}")
         return None, None
+    finally:
+        # 명시적 메모리 해제
+        gc.collect()
 
 @cached(l1_ttl=900, l2_ttl=14400)  # 15 min L1, 4 hour L2 cache for predictions
 def _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=False):
-    """Forecast returns for single ticker using ML models with caching."""
+    """Forecast returns for single ticker using ML models with caching.
+    
+    NOTE: forecast 결과값만 캐시됩니다. 모델 객체는 사용 후 즉시 해제됩니다.
+    """
     try:
         prices = ticker_data.values
         
@@ -505,73 +516,106 @@ def _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=False):
             return ticker, 0.02
         
         # Get forecast from best model
-        if isinstance(best_model, ARIMA):
-            expected_return, volatility = best_model.forecast(prices[~np.isnan(prices)])
-            logger.info(f"ARIMA forecast for {ticker}: return={expected_return:.4f}, vol={volatility:.4f}")
-            return ticker, expected_return
-        elif isinstance(best_model, (LSTMModel, XGBoostModel)):
-            forecast = best_model.forecast()
-            logger.info(f"{metrics['model_name']} forecast for {ticker}: {forecast:.4f}")
-            return ticker, forecast
-        else:
-            # Fallback
-            logger.warning(f"Unknown model type for {ticker}, using default")
-            return ticker, 0.08
+        try:
+            if isinstance(best_model, ARIMA):
+                expected_return, volatility = best_model.forecast(prices[~np.isnan(prices)])
+                logger.info(f"ARIMA forecast for {ticker}: return={expected_return:.4f}, vol={volatility:.4f}")
+                return ticker, expected_return
+            elif isinstance(best_model, (LSTMModel, XGBoostModel)):
+                forecast = best_model.forecast()
+                logger.info(f"{metrics['model_name']} forecast for {ticker}: {forecast:.4f}")
+                return ticker, forecast
+            else:
+                # Fallback
+                logger.warning(f"Unknown model type for {ticker}, using default")
+                return ticker, 0.08
+        finally:
+            # 모델 객체 명시적 해제 - 메모리 누수 방지
+            del best_model
+            gc.collect()
             
     except Exception as e:
         logger.error(f"ML forecasting failed for {ticker}: {e}")
         return ticker, 0.02
 
-def ml_forecast_returns(data, use_lightweight=False):
+def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
     """
-    Forecast expected returns using ML models with multicore processing.
+    Forecast expected returns using ML models with memory-efficient batch processing.
     
     Args:
         data: DataFrame with stock prices (dates as index, tickers as columns)
         use_lightweight: If True, use fast ensemble methods; if False, use full ML models
+        batch_size: Number of tickers to process in each batch (메모리 관리용)
         
     Returns:
         pandas Series with expected annual returns for each ticker
     """
     start_time = time.time()
     method = "ML" if not use_lightweight else "LIGHTWEIGHT"
-    logger.info(f"Starting PARALLEL {method} forecasting for {len(data.columns)} tickers")
+    logger.info(f"Starting BATCH {method} forecasting for {len(data.columns)} tickers")
     
-    # Determine optimal number of workers
+    # 메모리 효율을 위해 worker 수 제한 (LSTM/TensorFlow가 프로세스당 많은 메모리 사용)
+    # ThreadPoolExecutor 사용 - ProcessPoolExecutor는 TensorFlow와 함께 사용 시 
+    # 각 프로세스마다 TF가 로드되어 메모리 폭발
     import os
-    max_workers = min(os.cpu_count() or 4, len(data.columns), 8)
-    logger.info(f"Using {max_workers} parallel workers for {method} forecasting")
+    max_workers = min(os.cpu_count() or 4, len(data.columns), 4)  # 최대 4로 제한
+    logger.info(f"Using {max_workers} parallel workers for {method} forecasting (memory-safe mode)")
     
     forecasts = {}
+    tickers = list(data.columns)
+    total_batches = (len(tickers) + batch_size - 1) // batch_size
     
     try:
-        # Use ProcessPoolExecutor for CPU-bound ML tasks
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all forecasting tasks
-            future_to_ticker = {}
-            for ticker in data.columns:
-                future = executor.submit(_ml_forecast_single_ticker, ticker, data[ticker], use_lightweight)
-                future_to_ticker[future] = ticker
+        # 배치 단위로 처리하여 메모리 관리
+        for batch_idx in range(total_batches):
+            batch_start = batch_idx * batch_size
+            batch_end = min(batch_start + batch_size, len(tickers))
+            batch_tickers = tickers[batch_start:batch_end]
             
-            # Collect results as they complete
-            completed_count = 0
-            for future in as_completed(future_to_ticker):
-                ticker = future_to_ticker[future]
+            logger.info(f"Processing batch {batch_idx + 1}/{total_batches} ({len(batch_tickers)} tickers)")
+            
+            # ThreadPoolExecutor 사용 - TensorFlow는 메인 프로세스에서만 로드됨
+            # GIL 때문에 완전한 병렬화는 안되지만, I/O 대기 시간 활용 가능
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_ticker = {}
+                for ticker in batch_tickers:
+                    future = executor.submit(_ml_forecast_single_ticker, ticker, data[ticker], use_lightweight)
+                    future_to_ticker[future] = ticker
+                
+                for future in as_completed(future_to_ticker):
+                    ticker = future_to_ticker[future]
+                    try:
+                        result_ticker, forecast_value = future.result()
+                        forecasts[result_ticker] = forecast_value
+                    except Exception as exc:
+                        logger.error(f"{method} forecasting exception for {ticker}: {exc}")
+                        forecasts[ticker] = 0.08
+            
+            # 배치 완료 후 메모리 정리
+            gc.collect()
+            
+            # 진행 상황 로깅
+            completed = len(forecasts)
+            logger.info(f"Batch {batch_idx + 1} complete. Total progress: {completed}/{len(tickers)} ({100*completed/len(tickers):.1f}%)")
+            
+            # 메모리 상태 체크
+            import psutil
+            mem = psutil.virtual_memory()
+            logger.info(f"Memory usage: {mem.percent:.1f}% ({mem.used / 1024**3:.1f}GB / {mem.total / 1024**3:.1f}GB)")
+            
+            # 메모리 사용량이 85% 이상이면 경고 및 추가 정리
+            if mem.percent > 85:
+                logger.warning(f"High memory usage detected ({mem.percent:.1f}%). Forcing garbage collection.")
+                gc.collect()
+                # Keras/TensorFlow 세션 정리 시도
                 try:
-                    result_ticker, forecast_value = future.result()
-                    forecasts[result_ticker] = forecast_value
-                    completed_count += 1
-                    
-                    # Progress logging
-                    if completed_count % 25 == 0 or completed_count == len(data.columns):
-                        logger.info(f"{method} forecasting progress: {completed_count}/{len(data.columns)} completed")
-                        
-                except Exception as exc:
-                    logger.error(f"{method} forecasting exception for {ticker}: {exc}")
-                    forecasts[ticker] = 0.08  # Default fallback
+                    import tensorflow as tf
+                    tf.keras.backend.clear_session()
+                except Exception:
+                    pass
         
         elapsed_time = time.time() - start_time
-        logger.info(f"PARALLEL {method} forecasting completed in {elapsed_time:.2f}s for {len(forecasts)} tickers")
+        logger.info(f"BATCH {method} forecasting completed in {elapsed_time:.2f}s for {len(forecasts)} tickers")
         
         # Log cache performance
         cache = get_cache()

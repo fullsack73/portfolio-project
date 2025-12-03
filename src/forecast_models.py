@@ -88,7 +88,11 @@ class ARIMA():
 
 
 class LSTMModel():
-    """LSTM neural network for time series forecasting."""
+    """LSTM neural network for time series forecasting.
+    
+    WARNING: LSTM/TensorFlow는 많은 메모리를 사용합니다.
+    사용 후 반드시 cleanup() 메서드를 호출하거나 del로 삭제하세요.
+    """
     
     def __init__(self, layers=2, units=50, dropout=0.2):
         """
@@ -105,6 +109,23 @@ class LSTMModel():
         self.model = None
         self.scaler_X = None
         self.scaler_y = None
+        
+    def cleanup(self):
+        """명시적 메모리 해제 - 사용 후 반드시 호출하세요."""
+        if self.model is not None:
+            try:
+                import tensorflow as tf
+                del self.model
+                self.model = None
+                tf.keras.backend.clear_session()
+            except Exception:
+                pass
+        self.scaler_X = None
+        self.scaler_y = None
+        
+    def __del__(self):
+        """소멸자에서 cleanup 호출"""
+        self.cleanup()
         
     def _create_sequences(self, data, lookback=60):
         """Create sequences for LSTM training."""

@@ -65,7 +65,7 @@ class CacheMetrics:
 class L1MemoryCache:
     """L1 In-Memory Cache with intelligent memory management"""
     
-    def __init__(self, max_memory_gb: float = 5.0):
+    def __init__(self, max_memory_gb: float = 2.0):  # 기본값 5GB에서 2GB로 축소
         self.max_memory_bytes = int(max_memory_gb * 1024**3)
         self.cache = {}
         self.access_times = {}
@@ -96,11 +96,11 @@ class L1MemoryCache:
         """Clean up cache if memory pressure detected"""
         current_memory = psutil.virtual_memory().percent
         
-        # Aggressive cleanup if system memory is high
-        if current_memory > 85 or self.current_memory_usage + required_space > self.max_memory_bytes:
-            self._cleanup_lru(percentage=50)
-        elif current_memory > 75:
-            self._cleanup_lru(percentage=25)
+        # 더 공격적인 메모리 정리 - 임계값 낮춤
+        if current_memory > 75 or self.current_memory_usage + required_space > self.max_memory_bytes:
+            self._cleanup_lru(percentage=60)  # 60% 정리
+        elif current_memory > 65:
+            self._cleanup_lru(percentage=40)  # 40% 정리
             
     def _cleanup_lru(self, percentage: int):
         """Remove least recently used items"""
