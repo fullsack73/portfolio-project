@@ -258,13 +258,22 @@ const Optimizer = () => {
           </button>
 
           {loading && progress && (
-            <div className="optimizer-progress-container" style={{ marginTop: '1rem', width: '100%' }}>
+            <div className="optimizer-progress-container" style={{
+              marginTop: '1rem',
+              width: '100%',
+              gridColumn: '1 / -1',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
               <div className="optimizer-progress-bar-bg" style={{
                 background: '#e0e0e0',
                 borderRadius: '8px',
                 height: '10px',
                 overflow: 'hidden',
-                width: '100%'
+                width: '100%',
+                maxWidth: '600px' // Optional: limit width for better aesthetics on wide screens
               }}>
                 <div className="optimizer-progress-bar-fill" style={{
                   width: `${progress.percentage}%`,
