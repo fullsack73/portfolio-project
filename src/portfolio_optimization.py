@@ -6,7 +6,7 @@ import time
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from pypfopt import EfficientFrontier, risk_models, expected_returns
+from pypfopt import EfficientFrontier, risk_models, expected_returns, objective_functions
 from pypfopt.risk_models import CovarianceShrinkage
 import warnings
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
@@ -532,7 +532,8 @@ def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
 @cached(l1_ttl=600, l2_ttl=3600)  # 10 min L1, 1 hour L2 cache for portfolio optimization
 def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None,
                        target_return=None, risk_tolerance=None, portfolio_id=None,
-                       persist_result=False, load_if_available=False, progress_callback=None):
+                       persist_result=False, load_if_available=False, progress_callback=None,
+                       l2_gamma=0.05, max_asset_weight=0.2):
     """Optimize portfolio and optionally persist or reuse saved results."""
     # Log cache performance at start of optimization
     cache = get_cache()
@@ -601,7 +602,11 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     S = risk_models.CovarianceShrinkage(aligned_data).ledoit_wolf()
 
     # Initialize Efficient Frontier
-    ef = EfficientFrontier(mu, S)
+    ef = EfficientFrontier(mu, S, weight_bounds=(0, max_asset_weight))
+
+    # Add L2 regularization
+    if l2_gamma > 0:
+        ef.add_objective(objective_functions.L2_reg, gamma=l2_gamma)
 
     # Set optimization objective
     if target_return:
@@ -659,7 +664,9 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
             "ticker_group": ticker_group,
             "tickers": tickers,
             "target_return": target_return,
-            "risk_tolerance": risk_tolerance
+            "risk_tolerance": risk_tolerance,
+            "l2_gamma": l2_gamma,
+            "max_asset_weight": max_asset_weight
         }
         save_portfolio_result(portfolio_id, result_payload, metadata)
         result_payload["portfolio_id"] = portfolio_id
