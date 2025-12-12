@@ -435,6 +435,12 @@ def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
     max_workers = min(os.cpu_count() or 4, len(data.columns), 4)  # 최대 4로 제한
     logger.info(f"Using {max_workers} parallel workers for {method} forecasting (memory-safe mode)")
     
+    import multiprocessing as mp
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+
+    # Use spawn context for safety with ML libraries (TensorFlow/PyTorch)
+    ctx = mp.get_context('spawn')
+
     forecasts = {}
     tickers = list(data.columns)
     total_batches = (len(tickers) + batch_size - 1) // batch_size
@@ -448,11 +454,14 @@ def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
             
             logger.info(f"Processing batch {batch_idx + 1}/{total_batches} ({len(batch_tickers)} tickers)")
             
-            # ThreadPoolExecutor 사용 - TensorFlow는 메인 프로세스에서만 로드됨
-            # GIL 때문에 완전한 병렬화는 안되지만, I/O 대기 시간 활용 가능
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # ProcessPoolExecutor for true parallelism (CPU-bound ML training)
+            # max_workers capped at 4 to prevent OOM
+            with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as executor:
                 future_to_ticker = {}
                 for ticker in batch_tickers:
+                    # Pass data as ready-values (DataFrame/Series)
+                    # Note: Passing large DataFrames across processes has pickling overhead.
+                    # Since we batch, it is manageable.
                     future = executor.submit(_ml_forecast_single_ticker, ticker, data[ticker], use_lightweight)
                     future_to_ticker[future] = ticker
                 
