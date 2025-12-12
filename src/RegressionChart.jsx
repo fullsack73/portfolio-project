@@ -1,7 +1,5 @@
-import React from 'react';
-import Plot from 'react-plotly.js';
+import Plot from "react-plotly.js"
 
-// linear regression for non-linear data. retarded, i know.
 function RegressionChart({ data, regression, ticker }) {
   return (
     <Plot
@@ -9,48 +7,64 @@ function RegressionChart({ data, regression, ticker }) {
         {
           x: Object.keys(data),
           y: Object.values(data),
-          type: 'scatter',
-          mode: 'markers',
-          name: 'Actual Prices',
-          marker: { 
-            color: 'blue',
-            size: 6,
-            opacity: 0.6
-          }
+          type: "scatter",
+          mode: "markers",
+          name: "Actual Prices",
+          marker: {
+            color: "#06b6d4", // cyan
+            size: 8,
+            opacity: 0.7,
+          },
         },
         {
           x: Object.keys(regression),
           y: Object.values(regression),
-          type: 'scatter',
-          mode: 'lines',
-          name: 'Regression Line',
-          line: { 
-            color: 'red',
-            width: 2
-          }
-        }
+          type: "scatter",
+          mode: "lines",
+          name: "Regression Line",
+          line: {
+            color: "#3b82f6", // blue
+            width: 3,
+          },
+        },
       ]}
       layout={{
-        title: `${ticker} Price Regression`,
-        xaxis: { 
-          title: 'Date',
-          tickangle: 45,
-          tickformat: '%Y-%m-%d'
+        title: {
+          text: `${ticker} Price Regression`,
+          font: { color: "#e5e7eb", size: 18, family: "Inter, system-ui, sans-serif" },
         },
-        yaxis: { title: 'Price ($)' },
+        paper_bgcolor: "rgba(30, 41, 59, 0.5)",
+        plot_bgcolor: "rgba(15, 23, 42, 0.3)",
+        xaxis: {
+          title: { text: "Date", font: { color: "#94a3b8" } },
+          tickangle: 45,
+          tickformat: "%Y-%m-%d",
+          color: "#94a3b8",
+          gridcolor: "rgba(148, 163, 184, 0.1)",
+        },
+        yaxis: {
+          title: { text: "Price ($)", font: { color: "#94a3b8" } },
+          color: "#94a3b8",
+          gridcolor: "rgba(148, 163, 184, 0.1)",
+        },
         height: 600,
         margin: { t: 50, b: 100, l: 50, r: 50 },
         showlegend: true,
         legend: {
           x: 1,
           y: 1,
-          xanchor: 'right',
-          yanchor: 'top'
-        }
+          xanchor: "right",
+          yanchor: "top",
+          font: { color: "#e5e7eb" },
+          bgcolor: "rgba(30, 41, 59, 0.8)",
+        },
+      }}
+      config={{
+        displayModeBar: true,
+        displaylogo: false,
       }}
     />
-  );
+  )
 }
 
-export default RegressionChart;
-
+export default RegressionChart

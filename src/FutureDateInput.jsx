@@ -1,43 +1,45 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+"use client"
+
+import { useState, useCallback } from "react"
+import { useTranslation } from "react-i18next"
 
 const FutureDateInput = ({ onFutureDaysChange, initialDays = 30 }) => {
-  const [days, setDays] = useState(initialDays);
-  const { t } = useTranslation();
+  const [days, setDays] = useState(initialDays)
+  const { t } = useTranslation()
 
   // Debounced update function to prevent excessive API calls
   const debouncedUpdate = useCallback(
     (() => {
-      let timeoutId;
-      return (newDays, source = 'unknown') => {
-        console.log(`🔮 FutureDateInput debounced update from: ${source}`, { newDays });
-        clearTimeout(timeoutId);
+      let timeoutId
+      return (newDays, source = "unknown") => {
+        console.log(`🔮 FutureDateInput debounced update from: ${source}`, { newDays })
+        clearTimeout(timeoutId)
         timeoutId = setTimeout(() => {
           if (newDays && onFutureDaysChange) {
-            console.log('🔮 FutureDateInput calling parent onFutureDaysChange:', { newDays: parseInt(newDays) });
-            onFutureDaysChange(parseInt(newDays));
+            console.log("🔮 FutureDateInput calling parent onFutureDaysChange:", { newDays: Number.parseInt(newDays) })
+            onFutureDaysChange(Number.parseInt(newDays))
           }
-        }, 500); // 500ms delay
-      };
+        }, 500) // 500ms delay
+      }
     })(),
-    [onFutureDaysChange]
-  );
+    [onFutureDaysChange],
+  )
 
   const handleChange = (e) => {
-    const newDays = e.target.value;
-    console.log('🔮 FutureDateInput: User changed days:', { newDays });
-    setDays(newDays);
-    
+    const newDays = e.target.value
+    console.log("🔮 FutureDateInput: User changed days:", { newDays })
+    setDays(newDays)
+
     // Auto-update when value changes
-    if (newDays && parseInt(newDays) > 0) {
-      debouncedUpdate(newDays, 'user-input');
+    if (newDays && Number.parseInt(newDays) > 0) {
+      debouncedUpdate(newDays, "user-input")
     }
-  };
+  }
 
   return (
     <div className="date-input-container">
       <div className="date-input-group">
-        <label htmlFor="future-days">{t('future.days_to_predict', 'Days to Predict')}</label>
+        <label htmlFor="future-days">{t("future.days_to_predict", "Days to Predict")}</label>
         <input
           type="number"
           id="future-days"
@@ -48,9 +50,8 @@ const FutureDateInput = ({ onFutureDaysChange, initialDays = 30 }) => {
           title="Predictions will auto-update when you change this value"
         />
       </div>
-
     </div>
-  );
-};
+  )
+}
 
-export default FutureDateInput;
+export default FutureDateInput
