@@ -113,9 +113,9 @@ def sanitize_tickers(tickers):
     return sanitized
 
 @cached(l1_ttl=900, l2_ttl=14400)  # 15 min L1, 4 hour L2 cache
-def get_stock_data(tickers, start_date, end_date):
-    """Fetch stock data for given tickers and date range using batch processing with aggressive caching."""
-    logger.info(f"GET_STOCK_DATA: Starting BATCH fetch for {len(tickers)} tickers")
+def get_stock_data(tickers, start_date, end_date, progress_callback=None):
+    """Fetch stock data for given tickers and date range using chunked batch processing."""
+    logger.info(f"GET_STOCK_DATA: Starting fetch for {len(tickers)} tickers")
     
     # Sanitize tickers first
     original_tickers = tickers.copy()
@@ -124,100 +124,113 @@ def get_stock_data(tickers, start_date, end_date):
     if sanitized_changes:
         logger.info(f"GET_STOCK_DATA: Sanitized {len(sanitized_changes)} ticker symbols")
     
-    final_data = pd.DataFrame()
+    all_series = []
+    
+    # Process in chunks to prevent one bad ticker from blocking the whole batch
+    BATCH_SIZE = 50
+    
+    # Helper to chunk list
+    def chunked_iterable(iterable, size):
+        for i in range(0, len(iterable), size):
+            yield iterable[i:i + size]
 
-    # Try batch download with timeout
-    try:
-        logger.info(f"GET_STOCK_DATA: Performing batch download for {len(tickers)} tickers")
+    for chunk_idx, chunk in enumerate(chunked_iterable(tickers, BATCH_SIZE)):
+        if progress_callback:
+            progress_callback(chunk_idx * BATCH_SIZE, len(tickers), f"Fetching data for tickers {chunk_idx * BATCH_SIZE + 1}-{min((chunk_idx + 1) * BATCH_SIZE, len(tickers))}")
         
-        # Wrap yf.download in a function to allow timeout monitoring
-        def _batch_download():
-            return yf.download(tickers, start=start_date, end=end_date, progress=False, auto_adjust=True, threads=True)
-
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(_batch_download)
-            try:
-                # 15 seconds timeout for the entire batch
-                batch_data = future.result(timeout=15)
-                
-                # Handle single ticker case
-                if len(tickers) == 1:
-                    if isinstance(batch_data.columns, pd.MultiIndex):
-                        close_data = batch_data['Close'] if 'Close' in batch_data.columns.get_level_values(0) else batch_data
-                    else:
-                        close_data = batch_data['Close'] if 'Close' in batch_data.columns else batch_data
-                    close_data.name = tickers[0]
-                    final_data = pd.DataFrame(close_data)
-                else:
-                    if isinstance(batch_data.columns, pd.MultiIndex):
-                        if 'Close' in batch_data.columns.get_level_values(0):
-                            final_data = batch_data['Close']
-                        else:
-                            final_data = batch_data
-                    else:
-                        final_data = batch_data
-                
-                # Clean data
-                final_data = final_data.ffill().dropna(how='all')
-                
-                if not final_data.empty:
-                    logger.info(f"GET_STOCK_DATA: BATCH fetch successful for {len(final_data.columns)} tickers")
-                    return final_data
-                    
-            except TimeoutError:
-                logger.warning("GET_STOCK_DATA: Batch download timed out, falling back to individual fetch")
-            except Exception as e:
-                logger.warning(f"GET_STOCK_DATA: Batch download failed: {e}")
-
-    except Exception as e:
-        logger.error(f"GET_STOCK_DATA: Batch fetch wrapper failed: {e}")
-
-    # Fallback / clean up missing data
-    # If batch failed or returned partial data, we might want to fill in gaps.
-    # For now, if batch totally failed (final_data empty), we do individual fetch.
-    if final_data.empty:
-        logger.info(f"GET_STOCK_DATA: Falling back to individual ticker fetching")
+        logger.info(f"GET_STOCK_DATA: Processing chunk {chunk_idx+1} ({len(chunk)} tickers)")
+        chunk_data = pd.DataFrame()
         
-        # Parallel individual fetching with strict timeouts
-        import os
-        # IO bound, so we can use more threads
-        max_workers = min(32, len(tickers))
-        
-        individual_data = {}
-        
-        def _fetch_single_safe(ticker):
-            try:
-                # Use a separate thread interaction or just rely on yfinance internal timeout if accessible,
-                # but yfinance doesn't expose timeout easily in download.
-                # simpler approach: wrap in our own future
-                data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
-                if not data.empty and 'Close' in data.columns:
-                    return ticker, data['Close']
-            except Exception:
-                pass
-            return ticker, None
+        # Try batch download for this chunk
+        try:
+            def _download_chunk():
+                return yf.download(chunk, start=start_date, end=end_date, progress=False, auto_adjust=True, threads=True)
 
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_ticker = {executor.submit(_fetch_single_safe, t): t for t in tickers}
-            
-            # Use as_completed ensures we process as they finish
-            for future in as_completed(future_to_ticker):
-                ticker = future_to_ticker[future]
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_download_chunk)
                 try:
-                    # 5 second timeout per individual ticker
-                    r_ticker, r_data = future.result(timeout=5)
-                    if r_data is not None:
-                        individual_data[r_ticker] = r_data
+                    # 20 seconds timeout for a chunk of 50
+                    raw_data = future.result(timeout=20)
+                    
+                    # Extract Close data logic
+                    if len(chunk) == 1:
+                        if isinstance(raw_data.columns, pd.MultiIndex):
+                            c_data = raw_data['Close'] if 'Close' in raw_data.columns.get_level_values(0) else raw_data
+                        else:
+                            c_data = raw_data['Close'] if 'Close' in raw_data.columns else raw_data
+                        c_data.name = chunk[0]
+                        chunk_data = pd.DataFrame(c_data)
+                    else:
+                        if isinstance(raw_data.columns, pd.MultiIndex):
+                            if 'Close' in raw_data.columns.get_level_values(0):
+                                chunk_data = raw_data['Close']
+                            else:
+                                chunk_data = raw_data
+                        else:
+                            chunk_data = raw_data
+
+                    chunk_data = chunk_data.ffill().dropna(how='all')
+                    
+                except TimeoutError:
+                    logger.warning(f"GET_STOCK_DATA: Chunk {chunk_idx+1} timed out")
                 except Exception as e:
-                    logger.warning(f"GET_STOCK_DATA: Timeout/Error fetching {ticker}: {e}")
-        
-        if individual_data:
-            final_data = pd.DataFrame(individual_data).ffill().dropna(how='all')
-            logger.info(f"GET_STOCK_DATA: Individual fallback successful for {len(final_data.columns)} tickers")
-        else:
-            logger.error("GET_STOCK_DATA: All fetching methods failed")
+                    logger.warning(f"GET_STOCK_DATA: Chunk {chunk_idx+1} failed: {e}")
+
+        except Exception as e:
+            logger.error(f"GET_STOCK_DATA: Chunk wrapper failed: {e}")
+
+        # Fallback for this chunk if batch failed or resulted in empty data
+        if chunk_data.empty:
+            logger.info(f"GET_STOCK_DATA: Fallback to individual fetch for chunk {chunk_idx+1}")
+            individual_data = {}
+            import os
+            max_workers = min(32, len(chunk))
             
-    return final_data
+            def _fetch_single_safe(ticker):
+                try:
+                    data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
+                    if not data.empty and 'Close' in data.columns:
+                        val = data['Close']
+                        if isinstance(val, (int, float, np.number)):
+                             val = pd.Series([val], index=data.index)
+                        return ticker, val
+                except Exception:
+                    pass
+                return ticker, None
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_ticker = {executor.submit(_fetch_single_safe, t): t for t in chunk}
+                for future in as_completed(future_to_ticker):
+                    t = future_to_ticker[future]
+                    try:
+                        r_tick, r_val = future.result(timeout=5)
+                        if r_val is not None:
+                            if isinstance(r_val, (int, float, str, bool, np.number)):
+                                continue
+                            individual_data[r_tick] = r_val
+                    except Exception:
+                        pass
+            
+            if individual_data:
+                chunk_data = pd.DataFrame(individual_data).ffill().dropna(how='all')
+
+        if not chunk_data.empty:
+             all_series.append(chunk_data)
+
+    # Combine all chunks
+    if not all_series:
+        logger.error("GET_STOCK_DATA: All chunks failed")
+        return pd.DataFrame()
+        
+    logger.info(f"GET_STOCK_DATA: Combining {len(all_series)} chunks")
+    try:
+        final_data = pd.concat(all_series, axis=1)
+        final_data = final_data.ffill().dropna(how='all')
+        logger.info(f"GET_STOCK_DATA: Final shape: {final_data.shape}")
+        return final_data
+    except Exception as e:
+        logger.error(f"GET_STOCK_DATA: Error combining chunks: {e}")
+        return pd.DataFrame()
 
 def _exponential_smoothing_forecast(prices, alpha=0.3):
     """Fast exponential smoothing forecast."""
@@ -510,7 +523,7 @@ def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
 @cached(l1_ttl=600, l2_ttl=3600)  # 10 min L1, 1 hour L2 cache for portfolio optimization
 def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, tickers=None,
                        target_return=None, risk_tolerance=None, portfolio_id=None,
-                       persist_result=False, load_if_available=False):
+                       persist_result=False, load_if_available=False, progress_callback=None):
     """Optimize portfolio and optionally persist or reuse saved results."""
     # Log cache performance at start of optimization
     cache = get_cache()
@@ -537,7 +550,7 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     logger.info(f"PIPELINE STAGE 1: Attempting to fetch data for {len(tickers)} tickers")
     logger.info(f"Initial ticker list: {tickers[:10]}{'...' if len(tickers) > 10 else ''}")
     
-    data = get_stock_data(tickers, start_date, end_date)
+    data = get_stock_data(tickers, start_date, end_date, progress_callback=progress_callback)
     logger.info(f"PIPELINE STAGE 1 RESULT: Fetched data shape: {data.shape}")
     logger.info(f"Fetched data columns: {list(data.columns)[:10]}{'...' if len(data.columns) > 10 else ''}")
 

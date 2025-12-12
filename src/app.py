@@ -269,6 +269,16 @@ def financial_statement():
 
     return jsonify(data)
 
+# Global progress store: {request_id: {status: 'running'|'completed'|'error', progress: int, total: int, message: str}}
+PROGRESS_STORE = {}
+
+@app.route('/api/progress/<request_id>', methods=['GET'])
+def get_progress(request_id):
+    progress = PROGRESS_STORE.get(request_id)
+    if not progress:
+        return jsonify({'error': 'Request ID not found'}), 404
+    return jsonify(progress)
+
 @app.route('/api/optimize-portfolio', methods=['POST'])
 def optimize_portfolio_endpoint():
     data = request.get_json()
@@ -283,6 +293,21 @@ def optimize_portfolio_endpoint():
     portfolio_id = data.get('portfolio_id')
     persist_result = bool(data.get('persist_result'))
     load_if_available = bool(data.get('load_if_available'))
+    request_id = data.get('request_id')
+
+    # Initialize progress if request_id is provided
+    if request_id:
+        PROGRESS_STORE[request_id] = {'status': 'running', 'progress': 0, 'total': 100, 'message': 'Starting optimization...'}
+
+    def progress_callback(current, total, message):
+        if request_id:
+            PROGRESS_STORE[request_id] = {
+                'status': 'running',
+                'progress': current,
+                'total': total,
+                'message': message
+            }
+            # Simple cleanup for old keys could go here, but omitted for brevity
 
     try:
         optimized_portfolio = optimize_portfolio(
@@ -295,12 +320,21 @@ def optimize_portfolio_endpoint():
             risk_tolerance=risk_tolerance,
             portfolio_id=portfolio_id,
             persist_result=persist_result,
-            load_if_available=load_if_available
+            load_if_available=load_if_available,
+            progress_callback=progress_callback
         )
+        
+        if request_id:
+            PROGRESS_STORE[request_id] = {'status': 'completed', 'progress': 100, 'total': 100, 'message': 'Optimization completed'}
+            
         return jsonify(optimized_portfolio)
     except ValueError as ve:
+        if request_id:
+            PROGRESS_STORE[request_id] = {'status': 'error', 'message': str(ve)}
         return jsonify({'error': str(ve)}), 400
     except Exception as e:
+        if request_id:
+            PROGRESS_STORE[request_id] = {'status': 'error', 'message': str(e)}
         return jsonify({'error': str(e)}), 500
 
 

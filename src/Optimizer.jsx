@@ -97,12 +97,20 @@ const Optimizer = () => {
     event.target.value = ""
   }
 
+  const [progress, setProgress] = useState(null)
+
+  const generateRequestId = () => `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setOptimizedPortfolio(null)
     setAllocation(null)
+    setProgress({ percentage: 0, message: t("common.starting", "Starting...") })
+
+    const requestId = generateRequestId()
+    let pollInterval
 
     try {
       const payload = {
@@ -111,6 +119,7 @@ const Optimizer = () => {
         risk_free_rate: Number.parseFloat(riskFreeRate) / 100,
         target_return: targetReturn ? Number.parseFloat(targetReturn) / 100 : null,
         risk_tolerance: riskTolerance ? Number.parseFloat(riskTolerance) / 100 : null,
+        request_id: requestId
       }
 
       if (tickerGroup === "CUSTOM") {
@@ -118,6 +127,25 @@ const Optimizer = () => {
       } else {
         payload.ticker_group = tickerGroup
       }
+
+      // Start polling
+      pollInterval = setInterval(async () => {
+        try {
+          const progressRes = await axios.get(`http://127.0.0.1:5000/api/progress/${requestId}`)
+          const { progress, total, message, status } = progressRes.data
+          if (status === 'error') {
+            clearInterval(pollInterval)
+            return // Main request will handle error
+          }
+
+          // Calculate percentage based on tickers processed
+          // If total is 0 (start), use arbitrary small number or 0
+          const percentage = total > 0 ? Math.round((progress / total) * 100) : 0
+          setProgress({ percentage, message })
+        } catch (e) {
+          console.warn("Progress polling failed", e)
+        }
+      }, 1000)
 
       const response = await axios.post("http://127.0.0.1:5000/api/optimize-portfolio", payload)
 
@@ -130,8 +158,11 @@ const Optimizer = () => {
     } catch (err) {
       setError(err.response ? err.response.data.error : "An error occurred")
       setOptimizedPortfolio(null)
+    } finally {
+      clearInterval(pollInterval)
+      setLoading(false)
+      setProgress(null)
     }
-    setLoading(false)
   }
 
   return (
@@ -223,8 +254,30 @@ const Optimizer = () => {
             </div>
           </div>
           <button type="submit" className="optimizer-submit-button" disabled={loading}>
-            {loading ? t("common.loading") : t("optimizer.submit")}
+            {loading ? t("common.processing", "Processing...") : t("optimizer.submit")}
           </button>
+
+          {loading && progress && (
+            <div className="optimizer-progress-container" style={{ marginTop: '1rem', width: '100%' }}>
+              <div className="optimizer-progress-bar-bg" style={{
+                background: '#e0e0e0',
+                borderRadius: '8px',
+                height: '10px',
+                overflow: 'hidden',
+                width: '100%'
+              }}>
+                <div className="optimizer-progress-bar-fill" style={{
+                  width: `${progress.percentage}%`,
+                  background: '#4CAF50',
+                  height: '100%',
+                  transition: 'width 0.5s ease-in-out'
+                }}></div>
+              </div>
+              <p style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
+                {progress.percentage}% - {progress.message}
+              </p>
+            </div>
+          )}
         </div>
       </form>
 
