@@ -1,4 +1,5 @@
 import yfinance as yf
+import pandas as pd
 
 def get_financial_ratios(ticker_symbol):
     """
@@ -45,6 +46,69 @@ def get_financial_ratios(ticker_symbol):
 
     except (KeyError, IndexError, TypeError) as e:
         return {"error": f"Could not retrieve all financial data for {ticker_symbol}. Some data might be unavailable."}
+
+def get_financial_statements(ticker_symbol, statement_type="income", frequency="annual"):
+    """
+    Fetches financial statements for a given stock ticker.
+
+    Args:
+        ticker_symbol (str): The stock ticker symbol.
+        statement_type (str): "income", "balance", or "cash".
+        frequency (str): "annual" or "quarterly".
+
+    Returns:
+        dict: A dictionary containing the financial statement data.
+    """
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        
+        # Determine which attribute to access based on type and frequency
+        if statement_type == "income":
+            if frequency == "quarterly":
+                data = ticker.quarterly_financials
+            else:
+                data = ticker.financials
+        elif statement_type == "balance":
+            if frequency == "quarterly":
+                data = ticker.quarterly_balance_sheet
+            else:
+                data = ticker.balance_sheet
+        elif statement_type == "cash":
+            if frequency == "quarterly":
+                data = ticker.quarterly_cashflow
+            else:
+                data = ticker.cashflow
+        else:
+             return {"error": "Invalid statement type. Choose 'income', 'balance', or 'cash'."}
+
+        if data is None or data.empty:
+             return {"error": f"No {frequency} {statement_type} statement data found for {ticker_symbol}."}
+
+        # Convert DataFrame to a format suitable for JSON response (frontend table)
+        # We want columns to be dates (as strings) and index to be line items
+        
+        # Format columns (dates) to string 'YYYY-MM-DD'
+        data.columns = [col.strftime('%Y-%m-%d') if hasattr(col, 'strftime') else str(col) for col in data.columns]
+        
+        # Replace NaN with None (null in JSON)
+        data = data.where(pd.notnull(data), None)
+
+        # Prepare structure: columns list and rows dictionary
+        result = {
+            "dates": list(data.columns),
+            "breakdown": []
+        }
+        
+        for index, row in data.iterrows():
+            result["breakdown"].append({
+                "row_label": index,
+                "values": row.tolist()
+            })
+            
+        return result
+
+    except Exception as e:
+        return {"error": f"Error fetching financial statements: {str(e)}"}
 
 # Example usage:
 if __name__ == '__main__':

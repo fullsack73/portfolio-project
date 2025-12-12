@@ -9,7 +9,7 @@ from hedge_analysis import analyze_hedge_relationship
 import lightgbm as lgb
 import pandas as pd
 import psutil
-from financial_statement import get_financial_ratios
+from financial_statement import get_financial_ratios, get_financial_statements
 from portfolio_optimization import (
     optimize_portfolio,
     load_portfolio_result,
@@ -250,11 +250,21 @@ def analyze_hedge():
 def financial_statement():
     print("--- Received request for financial statement ---")
     ticker = request.args.get('ticker')
+    statement_type = request.args.get('type')
+    frequency = request.args.get('frequency', 'annual')
+
     if not ticker:
         return jsonify({"error": "Ticker symbol is required"}), 400
 
-    data = get_financial_ratios(ticker)
+    if statement_type:
+        data = get_financial_statements(ticker, statement_type, frequency)
+    else:
+        # Default to ratios for backward compatibility or initial view
+        data = get_financial_ratios(ticker)
+
     if 'error' in data:
+        # If it's just a "unavailable data" error, we might still want to return 200 with the error message
+        # But 404 is fine if it really failed.
         return jsonify(data), 404
 
     return jsonify(data)

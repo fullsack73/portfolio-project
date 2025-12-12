@@ -1,89 +1,234 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import StockScreener from './StockScreener'; // Import the new component
+import StockScreener from './StockScreener';
+import './App.css'; // Ensure CSS is imported
 
 const FinancialStatement = () => {
     const { t } = useTranslation();
-    const [data, setData] = useState(null);
     const [ticker, setTicker] = useState('AAPL');
+    const [view, setView] = useState('summary'); // 'summary', 'income', 'balance', 'cash'
+    const [frequency, setFrequency] = useState('annual'); // 'annual', 'quarterly'
+
+    const [data, setData] = useState(null); // For summary/ratios
+    const [statementData, setStatementData] = useState(null); // For tables
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
     const [hoveredMetric, setHoveredMetric] = useState(null);
 
-    const fetchData = async () => {
+    const fetchFinancialData = async () => {
+        if (!ticker) return;
         setLoading(true);
         setError(null);
-        setData(null);
+
         try {
-            const response = await fetch(`/api/financial-statement?ticker=${ticker}`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            let url = `http://127.0.0.1:5000/financial-statement?ticker=${ticker}`;
+            if (view !== 'summary') {
+                url += `&type=${view}&frequency=${frequency}`;
             }
+
+            const response = await fetch(url);
             const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `HTTP error! status: ${response.status}`);
+            }
+
             if (result.error) {
                 throw new Error(result.error);
             }
-            setData(result);
-        } catch (error) {
-            console.error("Fetch error:", error);
-            setError(error.message);
+
+            if (view === 'summary') {
+                setData(result);
+                setStatementData(null);
+            } else {
+                setStatementData(result);
+                // Keep existing summary data if available, or fetch it? 
+                // For now, let's just focus on the active view.
+            }
+
+        } catch (err) {
+            console.error("Fetch error:", err);
+            setError(err.message);
+            if (view !== 'summary') setStatementData(null);
+            else setData(null);
         } finally {
             setLoading(false);
         }
     };
 
+    // Re-fetch when view or frequency changes, if we have a ticker and have already fetched once (optional auto-refresh logic)
+    // For now, let's rely on the "Fetch" button for the initial load, and auto-fetch on view change if we already have data.
+    // Actually, user expects tabs to switch views immediately.
+    useEffect(() => {
+        // Only auto-fetch if we aren't completely empty
+        if ((data || statementData || error) && !loading) {
+            fetchFinancialData();
+        }
+    }, [view, frequency]);
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        fetchFinancialData();
+    };
+
+    const formatNumber = (val) => {
+        if (val === null || val === undefined) return '-';
+        if (typeof val === 'number') {
+            return new Intl.NumberFormat('en-US', {
+                maximumFractionDigits: 0,
+                notation: Math.abs(val) > 1000000 ? 'compact' : 'standard'
+            }).format(val);
+        }
+        return val;
+    };
+
     const renderMetricCard = (title, value, tooltip) => (
-        <div 
+        <div
             className="metric-card"
             onMouseEnter={() => setHoveredMetric(title)}
             onMouseLeave={() => setHoveredMetric(null)}
         >
             <h4>{title}</h4>
             <p>{value}</p>
-            <div className={`metric-tooltip ${hoveredMetric === title ? 'visible' : ''}`}>
-                {tooltip}
-            </div>
+            {tooltip && (
+                <div className={`metric-tooltip ${hoveredMetric === title ? 'visible' : ''}`}>
+                    {tooltip}
+                </div>
+            )}
         </div>
     );
 
+    const renderSummary = () => {
+        if (!data) return null;
+        return (
+            <div className="metrics-container animate-fade-in">
+                <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-400">
+                        {data.longName} ({data.ticker})
+                    </h2>
+                </div>
+                <div className="metrics-grid">
+                    {renderMetricCard(t('financial.per'), data.per, t('financial.per_tooltip'))}
+                    {renderMetricCard(t('financial.pbr'), data.pbr, t('financial.pbr_tooltip'))}
+                    {renderMetricCard(t('financial.psr'), data.psr, t('financial.psr_tooltip'))}
+                    {renderMetricCard(t('financial.debt_ratio'), data.debt_ratio, t('financial.debt_ratio_tooltip'))}
+                    {renderMetricCard(t('financial.liquidity_ratio'), data.liquidity_ratio, t('financial.liquidity_ratio_tooltip'))}
+                </div>
+            </div>
+        );
+    };
+
+    const renderTable = () => {
+        if (!statementData || !statementData.dates) return null;
+
+        return (
+            <div className="financial-table-container animate-fade-in">
+                <table className="financial-table">
+                    <thead>
+                        <tr>
+                            <th>Breakdown</th>
+                            {statementData.dates.map((date, i) => (
+                                <th key={i}>{date}</th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {statementData.breakdown.map((row, i) => (
+                            <tr key={i}>
+                                <td>{row.row_label}</td>
+                                {row.values.map((val, j) => (
+                                    <td key={j}>{formatNumber(val)}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
     return (
-        <div className="financial-analysis">
-            <h1>{t('financial.title')}</h1>
-            <div className="input-form-wrapper">
-                <label htmlFor="ticker-input">{t('ticker.label')}</label>
-                <div className="input-form-container">
-                    <input 
-                        id="ticker-input"
-                        type="text" 
-                        value={ticker} 
-                        onChange={(e) => setTicker(e.target.value.toUpperCase())} 
+        <div className="financial-analysis-container">
+            <div className="financial-header">
+                <h1>{t('financial.title')}</h1>
+            </div>
+
+            <div className="financial-controls-wrapper">
+                <form onSubmit={handleSearch} className="ticker-input-group">
+                    <input
+                        type="text"
+                        value={ticker}
+                        onChange={(e) => setTicker(e.target.value.toUpperCase())}
                         placeholder={t('ticker.placeholder')}
                     />
-                    <button onClick={fetchData} className="submit-button" disabled={loading}>
+                    <button type="submit" className="ticker-search-btn" disabled={loading}>
                         {loading ? t('common.loading') : t('financial.fetch_data')}
                     </button>
+                </form>
+
+                <div className="view-controls">
+                    <div className="toggle-group">
+                        <button
+                            className={`toggle-btn ${view === 'summary' ? 'active' : ''}`}
+                            onClick={() => setView('summary')}
+                        >
+                            Summary
+                        </button>
+                        <button
+                            className={`toggle-btn ${view === 'income' ? 'active' : ''}`}
+                            onClick={() => setView('income')}
+                        >
+                            Income Statement
+                        </button>
+                        <button
+                            className={`toggle-btn ${view === 'balance' ? 'active' : ''}`}
+                            onClick={() => setView('balance')}
+                        >
+                            Balance Sheet
+                        </button>
+                        <button
+                            className={`toggle-btn ${view === 'cash' ? 'active' : ''}`}
+                            onClick={() => setView('cash')}
+                        >
+                            Cash Flow
+                        </button>
+                    </div>
+
+                    {view !== 'summary' && (
+                        <div className="toggle-group">
+                            <button
+                                className={`toggle-btn ${frequency === 'annual' ? 'active' : ''}`}
+                                onClick={() => setFrequency('annual')}
+                            >
+                                Annual
+                            </button>
+                            <button
+                                className={`toggle-btn ${frequency === 'quarterly' ? 'active' : ''}`}
+                                onClick={() => setFrequency('quarterly')}
+                            >
+                                Quarterly
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {error && <p className="error-message">{t('common.error')}: {error}</p>}
+            {error && <div className="error-message">{t('common.error')}: {error}</div>}
 
-            {data && (
-                <div className="metrics-container">
-                    <div className="text-center mb-4">
-                        <h2 className="text-2xl font-bold">{data.longName} ({data.ticker})</h2>
-                    </div>
-                    <div className="metrics-grid">
-                        {renderMetricCard(t('financial.per'), data.per, t('financial.per_tooltip'))}
-                        {renderMetricCard(t('financial.pbr'), data.pbr, t('financial.pbr_tooltip'))}
-                        {renderMetricCard(t('financial.psr'), data.psr, t('financial.psr_tooltip'))}
-                        {renderMetricCard(t('financial.debt_ratio'), data.debt_ratio, t('financial.debt_ratio_tooltip'))}
-                        {renderMetricCard(t('financial.liquidity_ratio'), data.liquidity_ratio, t('financial.liquidity_ratio_tooltip'))}
-                    </div>
-                </div>
-            )}
+            <div className="financial-content">
+                {view === 'summary' ? renderSummary() : renderTable()}
 
-            {/* Add the Stock Screener component below the existing content */}
-            <StockScreener />
+                {!loading && !error && !data && !statementData && (
+                    <div className="empty-state">
+                        <p>Enter a ticker symbol and click Fetch Data to begin analysis.</p>
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-16 pt-8 border-t border-gray-800">
+                <StockScreener />
+            </div>
         </div>
     );
 };
