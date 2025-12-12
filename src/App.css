@@ -722,6 +722,134 @@ body {
   margin-bottom: var(--spacing-2xl);
 }
 
+/* Hedge Analysis Styles */
+.hedge-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.hedge-input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  color: var(--color-text-primary);
+  transition: all 0.2s ease;
+}
+
+.hedge-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+  background: var(--color-bg-tertiary);
+}
+
+.hedge-submit-button {
+  width: 100%;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: var(--color-text-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hedge-submit-button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+.hedge-submit-button:disabled {
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.hedge-results {
+  margin-top: var(--spacing-2xl);
+}
+
+.hedge-results h3 {
+  text-align: center;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: var(--spacing-xl);
+  color: var(--color-text-primary);
+}
+
+.hedge-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.hedge-result-card {
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, var(--color-bg-elevated) 100%);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.hedge-result-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-accent) 100%);
+}
+
+.hedge-result-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary);
+}
+
+.hedge-result-card h4 {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hedge-result-card p {
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+  margin: var(--spacing-xs) 0;
+}
+
+.hedge-value-highlight {
+  font-size: 1.5rem !important;
+  font-weight: 700;
+}
+
+.hedge-positive {
+  color: var(--color-success) !important;
+}
+
+.hedge-negative {
+  color: var(--color-danger) !important;
+}
+
 .submit-button {
   width: 100%;
   padding: var(--spacing-lg) var(--spacing-xl);

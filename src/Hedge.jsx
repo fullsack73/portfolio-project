@@ -52,52 +52,67 @@ const HedgeAnalysis = () => {
 
     return (
         <div className="hedge-analysis">
-            <h2>{t('hedge.title')}</h2>
-            
+            <h2 style={{
+                fontSize: '2rem',
+                fontWeight: '700',
+                marginBottom: '2rem',
+                textAlign: 'center',
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+            }}>{t('hedge.title')}</h2>
+
             <form onSubmit={handleSubmit} className="hedge-form">
-                <div className="form-group">
-                    <label htmlFor="ticker1">{t('hedge.label1')}:</label>
-                    <input
-                        type="text"
-                        id="ticker1"
-                        value={ticker1}
-                        onChange={(e) => setTicker1(e.target.value.toUpperCase())}
-                        placeholder="e.g., AAPL"
-                    />
+                <div className="hedge-form-grid">
+                    <div className="form-group">
+                        <label htmlFor="ticker1">{t('hedge.label1')}:</label>
+                        <input
+                            type="text"
+                            id="ticker1"
+                            value={ticker1}
+                            onChange={(e) => setTicker1(e.target.value.toUpperCase())}
+                            placeholder="e.g., AAPL"
+                            className="hedge-input"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="ticker2">{t('hedge.label2')}:</label>
+                        <input
+                            type="text"
+                            id="ticker2"
+                            value={ticker2}
+                            onChange={(e) => setTicker2(e.target.value.toUpperCase())}
+                            placeholder="e.g., MSFT"
+                            className="hedge-input"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="startDate">{t('date.start')}:</label>
+                        <input
+                            type="date"
+                            id="startDate"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="hedge-input"
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="endDate">{t('date.end')}:</label>
+                        <input
+                            type="date"
+                            id="endDate"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="hedge-input"
+                        />
+                    </div>
                 </div>
 
-                <div className="form-group">
-                    <label htmlFor="ticker2">{t('hedge.label2')}:</label>
-                    <input
-                        type="text"
-                        id="ticker2"
-                        value={ticker2}
-                        onChange={(e) => setTicker2(e.target.value.toUpperCase())}
-                        placeholder="e.g., MSFT"
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="startDate">{t('date.start')}:</label>
-                    <input
-                        type="date"
-                        id="startDate"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                    />
-                </div>
-
-                <div className="form-group">
-                    <label htmlFor="endDate">{t('date.end')}:</label>
-                    <input
-                        type="date"
-                        id="endDate"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                    />
-                </div>
-
-                <button type="submit" disabled={loading}>
+                <button type="submit" disabled={loading} className="hedge-submit-button">
                     {loading ? t('common.loading') : t('common.submit')}
                 </button>
             </form>
@@ -105,31 +120,31 @@ const HedgeAnalysis = () => {
             {error && <div className="error-message">{error}</div>}
 
             {hedgeData && (
-                <div>
+                <div className="hedge-results">
                     <h3>{t('hedge.results')}</h3>
-                    <div className="hedge-results">
-                        
-                        <div className="result-card">
+                    <div className="hedge-results-grid">
+
+                        <div className="hedge-result-card">
                             <h4>{t('hedge.companies')}</h4>
                             <p>{hedgeData.company1} ({hedgeData.ticker1})</p>
                             <p>{hedgeData.company2} ({hedgeData.ticker2})</p>
                         </div>
 
-                        <div className="result-card">
+                        <div className="hedge-result-card">
                             <h4>{t('hedge.relationship')}</h4>
-                            <p className={hedgeData.is_hedge ? 'hedge-positive' : 'hedge-negative'}>
+                            <p className={`hedge-value-highlight ${hedgeData.is_hedge ? 'hedge-positive' : 'hedge-negative'}`}>
                                 {hedgeData.is_hedge ? 'Yes' : 'No'}
                             </p>
                             <p>{t('hedge.strength')}: {hedgeData.strength}</p>
                         </div>
 
-                        <div className="result-card">
+                        <div className="hedge-result-card">
                             <h4>{t('hedge.statisticalAnalysis')}</h4>
-                            <p>{t('hedge.correlation')}: {hedgeData.correlation.toFixed(3)}</p>
-                            <p>{t('hedge.pValue')}: {hedgeData.p_value.toFixed(4)}</p>
+                            <p>{t('hedge.correlation')}: <span style={{ color: 'var(--color-primary-light)' }}>{hedgeData.correlation.toFixed(3)}</span></p>
+                            <p>{t('hedge.pValue')}: <span style={{ color: 'var(--color-primary-light)' }}>{hedgeData.p_value.toFixed(4)}</span></p>
                         </div>
 
-                        <div className="result-card">
+                        <div className="hedge-result-card">
                             <h4>{t('hedge.analysisPeriod')}</h4>
                             <p>{t('date.start')}: {hedgeData.period.start}</p>
                             <p>{t('date.end')}: {hedgeData.period.end}</p>

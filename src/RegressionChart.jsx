@@ -29,6 +29,7 @@ function RegressionChart({ data, regression, ticker }) {
         },
       ]}
       layout={{
+        autosize: true,
         title: {
           text: `${ticker} Price Regression`,
           font: { color: "#e5e7eb", size: 18, family: "Inter, system-ui, sans-serif" },
@@ -47,7 +48,7 @@ function RegressionChart({ data, regression, ticker }) {
           color: "#94a3b8",
           gridcolor: "rgba(148, 163, 184, 0.1)",
         },
-        height: 600,
+        // height: 600, // let container control height
         margin: { t: 50, b: 100, l: 50, r: 50 },
         showlegend: true,
         legend: {
@@ -59,8 +60,10 @@ function RegressionChart({ data, regression, ticker }) {
           bgcolor: "rgba(30, 41, 59, 0.8)",
         },
       }}
+      style={{ width: "100%", height: "100%" }}
+      useResizeHandler={true}
       config={{
-        displayModeBar: true,
+        displayModeBar: false,
         displaylogo: false,
       }}
     />
