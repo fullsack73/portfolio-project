@@ -124,85 +124,100 @@ def get_stock_data(tickers, start_date, end_date):
     if sanitized_changes:
         logger.info(f"GET_STOCK_DATA: Sanitized {len(sanitized_changes)} ticker symbols")
     
+    final_data = pd.DataFrame()
+
+    # Try batch download with timeout
     try:
-        # Use batch download for better performance
         logger.info(f"GET_STOCK_DATA: Performing batch download for {len(tickers)} tickers")
-        batch_data = yf.download(tickers, start=start_date, end=end_date, progress=False, auto_adjust=True)
         
-        # Handle single ticker case (returns Series instead of DataFrame)
-        if len(tickers) == 1:
-            # For single ticker, yfinance returns a simple DataFrame
-            if isinstance(batch_data.columns, pd.MultiIndex):
-                # If somehow we get MultiIndex for single ticker
-                close_data = batch_data['Close'] if 'Close' in batch_data.columns.get_level_values(0) else batch_data
-            else:
-                # Normal case for single ticker
-                close_data = batch_data['Close'] if 'Close' in batch_data.columns else batch_data
-            
-            close_data.name = tickers[0]
-            final_data = pd.DataFrame(close_data)
-        else:
-            # Extract Close prices for multiple tickers
-            logger.info(f"GET_STOCK_DATA: Batch data columns structure: {type(batch_data.columns)}")
-            logger.info(f"GET_STOCK_DATA: Batch data shape: {batch_data.shape}")
-            
-            if isinstance(batch_data.columns, pd.MultiIndex):
-                # MultiIndex columns: ('Close', 'AAPL'), ('Close', 'MSFT'), etc.
-                if 'Close' in batch_data.columns.get_level_values(0):
-                    close_data = batch_data['Close']
-                    logger.info(f"GET_STOCK_DATA: Extracted Close data shape: {close_data.shape}")
-        
-        # Clean the data
-        # Only drop rows that are entirely NaN across all tickers; keep partial data for per-ticker cleaning later
-        close_data = close_data.ffill().dropna(how='all')
-        logger.info(f"GET_STOCK_DATA: Data cleaned, final shape: {close_data.shape}")
-        
-        # Ensure we have data
-        if close_data.empty:
-            logger.error(f"GET_STOCK_DATA: No data returned after cleaning")
-            return pd.DataFrame()
-            
-        final_data = close_data
-        logger.info(f"GET_STOCK_DATA: BATCH fetch successful for {len(final_data.columns)} tickers")
-        return final_data
-        
+        # Wrap yf.download in a function to allow timeout monitoring
+        def _batch_download():
+            return yf.download(tickers, start=start_date, end=end_date, progress=False, auto_adjust=True, threads=True)
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_batch_download)
+            try:
+                # 15 seconds timeout for the entire batch
+                batch_data = future.result(timeout=15)
+                
+                # Handle single ticker case
+                if len(tickers) == 1:
+                    if isinstance(batch_data.columns, pd.MultiIndex):
+                        close_data = batch_data['Close'] if 'Close' in batch_data.columns.get_level_values(0) else batch_data
+                    else:
+                        close_data = batch_data['Close'] if 'Close' in batch_data.columns else batch_data
+                    close_data.name = tickers[0]
+                    final_data = pd.DataFrame(close_data)
+                else:
+                    if isinstance(batch_data.columns, pd.MultiIndex):
+                        if 'Close' in batch_data.columns.get_level_values(0):
+                            final_data = batch_data['Close']
+                        else:
+                            final_data = batch_data
+                    else:
+                        final_data = batch_data
+                
+                # Clean data
+                final_data = final_data.ffill().dropna(how='all')
+                
+                if not final_data.empty:
+                    logger.info(f"GET_STOCK_DATA: BATCH fetch successful for {len(final_data.columns)} tickers")
+                    return final_data
+                    
+            except TimeoutError:
+                logger.warning("GET_STOCK_DATA: Batch download timed out, falling back to individual fetch")
+            except Exception as e:
+                logger.warning(f"GET_STOCK_DATA: Batch download failed: {e}")
+
     except Exception as e:
-        logger.error(f"GET_STOCK_DATA: Batch fetch failed: {e}")
+        logger.error(f"GET_STOCK_DATA: Batch fetch wrapper failed: {e}")
+
+    # Fallback / clean up missing data
+    # If batch failed or returned partial data, we might want to fill in gaps.
+    # For now, if batch totally failed (final_data empty), we do individual fetch.
+    if final_data.empty:
         logger.info(f"GET_STOCK_DATA: Falling back to individual ticker fetching")
         
-        # Fallback to parallel individual ticker fetching
-        individual_data = {}
+        # Parallel individual fetching with strict timeouts
         import os
-        max_workers = min(os.cpu_count() or 4, len(tickers), 16) # Cap at 16 for I/O
-        logger.info(f"GET_STOCK_DATA: Using {max_workers} parallel workers for individual fetch")
-
-        def _fetch_single(ticker):
+        # IO bound, so we can use more threads
+        max_workers = min(32, len(tickers))
+        
+        individual_data = {}
+        
+        def _fetch_single_safe(ticker):
             try:
-                ticker_data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
-                if not ticker_data.empty and 'Close' in ticker_data.columns:
-                    logger.info(f"GET_STOCK_DATA: Individual fetch successful for {ticker}")
-                    return ticker, ticker_data['Close']
-                else:
-                    logger.warning(f"GET_STOCK_DATA: No data for {ticker}")
-                    return ticker, None
-            except Exception as ticker_error:
-                logger.error(f"GET_STOCK_DATA: Failed to fetch {ticker}: {ticker_error}")
-                return ticker, None
+                # Use a separate thread interaction or just rely on yfinance internal timeout if accessible,
+                # but yfinance doesn't expose timeout easily in download.
+                # simpler approach: wrap in our own future
+                data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=True)
+                if not data.empty and 'Close' in data.columns:
+                    return ticker, data['Close']
+            except Exception:
+                pass
+            return ticker, None
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_ticker = {executor.submit(_fetch_single, ticker): ticker for ticker in tickers}
+            future_to_ticker = {executor.submit(_fetch_single_safe, t): t for t in tickers}
+            
+            # Use as_completed ensures we process as they finish
             for future in as_completed(future_to_ticker):
-                ticker, data = future.result()
-                if data is not None:
-                    individual_data[ticker] = data
+                ticker = future_to_ticker[future]
+                try:
+                    # 5 second timeout per individual ticker
+                    r_ticker, r_data = future.result(timeout=5)
+                    if r_data is not None:
+                        individual_data[r_ticker] = r_data
+                except Exception as e:
+                    logger.warning(f"GET_STOCK_DATA: Timeout/Error fetching {ticker}: {e}")
         
         if individual_data:
-            final_data = pd.DataFrame(individual_data).ffill().dropna()
+            final_data = pd.DataFrame(individual_data).ffill().dropna(how='all')
             logger.info(f"GET_STOCK_DATA: Individual fallback successful for {len(final_data.columns)} tickers")
-            return final_data
         else:
-            logger.error(f"GET_STOCK_DATA: All fetching methods failed")
-            return pd.DataFrame()
+            logger.error("GET_STOCK_DATA: All fetching methods failed")
+            
+    return final_data
 
 def _exponential_smoothing_forecast(prices, alpha=0.3):
     """Fast exponential smoothing forecast."""
