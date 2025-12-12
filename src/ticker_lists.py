@@ -61,6 +61,8 @@ def get_ticker_group(group_name):
         "S&P 500": "S&P 500",
         "DJIA": "Dow Jones",
         "Dow Jones": "Dow Jones",
+        "DOW": "Dow Jones",
+        "Dow": "Dow Jones",
         "Any": "Any"
     }
     
