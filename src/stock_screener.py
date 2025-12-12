@@ -9,6 +9,59 @@ import time
 # Configure logging for this module
 logger = logging.getLogger(__name__)
 
+import concurrent.futures
+
+def fetch_single_stock_data(ticker_symbol):
+    """
+    Fetches data for a single ticker. Used for parallel execution.
+    """
+    try:
+        ticker = yf.Ticker(ticker_symbol)
+        # Fast info is faster for some things but .info is needed for ratios.
+        # We rely on .info
+        info = ticker.info
+        
+        # Extract relevant metrics
+        # Defaults to None if missing
+        
+        # Valuation
+        pe_ratio = info.get('trailingPE')
+        forward_pe = info.get('forwardPE')
+        pb_ratio = info.get('priceToBook')
+        ps_ratio = info.get('priceToSalesTrailing12Months')
+        peg_ratio = info.get('pegRatio')
+        
+        # Financials
+        debt_to_equity = info.get('debtToEquity')
+        roe = info.get('returnOnEquity')
+        roa = info.get('returnOnAssets')
+        profit_margin = info.get('profitMargin')
+        
+        # Price
+        current_price = info.get('currentPrice')
+        market_cap = info.get('marketCap')
+        
+        return {
+            'Ticker': ticker_symbol,
+            'Company': info.get('longName', ticker_symbol),
+            'Sector': info.get('sector', 'N/A'),
+            'Industry': info.get('industry', 'N/A'),
+            'Price': current_price,
+            'Market Cap': market_cap,
+            'P/E': pe_ratio,
+            'Forward P/E': forward_pe,
+            'P/B': pb_ratio,
+            'Price/Sales': ps_ratio,
+            'PEG': peg_ratio,
+            'Debt/Equity': debt_to_equity,
+            'ROE': roe,
+            'ROA': roa,
+            'Profit Margin': profit_margin
+        }
+    except Exception as e:
+        logger.debug(f"Failed to fetch data for {ticker_symbol}: {e}")
+        return None
+
 def fetch_universe_data(tickers):
     """
     Fetches key statistics for a list of tickers using yfinance.
@@ -16,63 +69,24 @@ def fetch_universe_data(tickers):
     """
     data = []
     
-    # Chunk tickers to avoid overwhelming yfinance (though Tickers object handles it well usually)
-    # yfinance .tickers dictionary is lazy, we need to access info to trigger fetch
-    # Accessing .info is slow because it's one request per ticker roughly (even with multithreading it can take time)
-    # Optimization: Use Fast-info if possible or bulk download for prices, but for RATIOS we need .info
-    
-    # We will accept the latency for the first run (cold cache).
-    
     start_time = time.time()
-    logger.info(f"Fetching data for {len(tickers)} tickers...")
+    logger.info(f"Fetching data for {len(tickers)} tickers in parallel...")
     
-    for ticker_symbol in tickers:
-        try:
-            ticker = yf.Ticker(ticker_symbol)
-            info = ticker.info
-            
-            # Extract relevant metrics
-            # Defaults to None if missing
-            
-            # Valuation
-            pe_ratio = info.get('trailingPE')
-            forward_pe = info.get('forwardPE')
-            pb_ratio = info.get('priceToBook')
-            ps_ratio = info.get('priceToSalesTrailing12Months')
-            peg_ratio = info.get('pegRatio')
-            
-            # Financials
-            debt_to_equity = info.get('debtToEquity')
-            roe = info.get('returnOnEquity')
-            roa = info.get('returnOnAssets')
-            profit_margin = info.get('profitMargin')
-            
-            # Price
-            current_price = info.get('currentPrice')
-            market_cap = info.get('marketCap')
-            
-            stock_data = {
-                'Ticker': ticker_symbol,
-                'Company': info.get('longName', ticker_symbol),
-                'Sector': info.get('sector', 'N/A'),
-                'Industry': info.get('industry', 'N/A'),
-                'Price': current_price,
-                'Market Cap': market_cap,
-                'P/E': pe_ratio,
-                'Forward P/E': forward_pe,
-                'P/B': pb_ratio,
-                'Price/Sales': ps_ratio,
-                'PEG': peg_ratio,
-                'Debt/Equity': debt_to_equity,
-                'ROE': roe,
-                'ROA': roa,
-                'Profit Margin': profit_margin
-            }
-            data.append(stock_data)
-        except Exception as e:
-            logger.debug(f"Failed to fetch data for {ticker_symbol}: {e}")
-            continue
-            
+    # Use ThreadPoolExecutor for I/O bound tasks
+    # Limit max_workers to avoid hitting API rate limits or overwhelming the system
+    # 20 workers is a reasonable starting point for network requests
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        future_to_ticker = {executor.submit(fetch_single_stock_data, t): t for t in tickers}
+        
+        for future in concurrent.futures.as_completed(future_to_ticker):
+            ticker_symbol = future_to_ticker[future]
+            try:
+                result = future.result()
+                if result:
+                    data.append(result)
+            except Exception as e:
+                logger.error(f"Exc generated for {ticker_symbol}: {e}")
+
     logger.info(f"Fetched data for {len(data)} stocks in {time.time() - start_time:.2f}s")
     return pd.DataFrame(data)
 
