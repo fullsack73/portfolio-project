@@ -412,7 +412,7 @@ def _ml_forecast_single_ticker(ticker, ticker_data, use_lightweight=False):
         logger.error(f"ML forecasting failed for {ticker}: {e}")
         return ticker, 0.02
 
-def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
+def ml_forecast_returns(data, use_lightweight=False, batch_size=20, progress_callback=None):
     """
     Forecast expected returns using ML models with memory-efficient batch processing.
     
@@ -420,7 +420,8 @@ def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
         data: DataFrame with stock prices (dates as index, tickers as columns)
         use_lightweight: If True, use fast ensemble methods; if False, use full ML models
         batch_size: Number of tickers to process in each batch (메모리 관리용)
-        
+        progress_callback: Optional callback(current, total, message)
+    
     Returns:
         pandas Series with expected annual returns for each ticker
     """
@@ -481,6 +482,9 @@ def ml_forecast_returns(data, use_lightweight=False, batch_size=20):
             completed = len(forecasts)
             logger.info(f"Batch {batch_idx + 1} complete. Total progress: {completed}/{len(tickers)} ({100*completed/len(tickers):.1f}%)")
             
+            if progress_callback:
+                progress_callback(completed, len(tickers), f"ML Training: Batch {batch_idx + 1}/{total_batches} complete")
+
             # 메모리 상태 체크
             import psutil
             mem = psutil.virtual_memory()
@@ -556,11 +560,23 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     else:
         raise ValueError("Either ticker_group or tickers must be provided.")
 
+    # Define weighted progress callback wrapper
+    def _weighted_progress(stage_start, stage_end, current, total, message):
+        if progress_callback and total > 0:
+            stage_range = stage_end - stage_start
+            normalized = (current / total) * stage_range
+            global_progress = stage_start + normalized
+            progress_callback(global_progress, 100, message)
+
     # Fetch data with comprehensive logging
     logger.info(f"PIPELINE STAGE 1: Attempting to fetch data for {len(tickers)} tickers")
     logger.info(f"Initial ticker list: {tickers[:10]}{'...' if len(tickers) > 10 else ''}")
     
-    data = get_stock_data(tickers, start_date, end_date, progress_callback=progress_callback)
+    # Adapter for fetching (0-30%)
+    def fetch_callback(current, total, message):
+        _weighted_progress(0, 30, current, total, message)
+
+    data = get_stock_data(tickers, start_date, end_date, progress_callback=fetch_callback)
     logger.info(f"PIPELINE STAGE 1 RESULT: Fetched data shape: {data.shape}")
     logger.info(f"Fetched data columns: {list(data.columns)[:10]}{'...' if len(data.columns) > 10 else ''}")
 
@@ -583,10 +599,14 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     tickers = data.columns.tolist()
     logger.info(f"PIPELINE STAGE 2 FINAL: Proceeding with {len(tickers)} tickers for forecasting")
 
+    # Adapter for ML Forecasting (30-90%)
+    def ml_callback(current, total, message):
+        _weighted_progress(30, 90, current, total, message)
+
     # Calculate expected returns using ML-based forecasting with fallback to lightweight
     logger.info(f"Starting ML forecasting for {len(data.columns)} tickers: {list(data.columns)}")
     # Strict ML-only forecasting
-    mu = ml_forecast_returns(data, use_lightweight=False)
+    mu = ml_forecast_returns(data, use_lightweight=False, progress_callback=ml_callback)
     logger.info(f"ML forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
     
     # Check for any missing tickers

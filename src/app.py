@@ -269,15 +269,56 @@ def financial_statement():
 
     return jsonify(data)
 
-# Global progress store: {request_id: {status: 'running'|'completed'|'error', progress: int, total: int, message: str}}
-PROGRESS_STORE = {}
+import queue
+import threading
+import json
+from flask import Response, stream_with_context
 
-@app.route('/api/progress/<request_id>', methods=['GET'])
-def get_progress(request_id):
-    progress = PROGRESS_STORE.get(request_id)
-    if not progress:
-        return jsonify({'error': 'Request ID not found'}), 404
-    return jsonify(progress)
+# Global store for request queues: {request_id: queue.Queue}
+REQUEST_QUEUES = {}
+
+def push_progress(request_id, progress, total, message, status='running'):
+    """Helper to push progress events to the SSE queue."""
+    if request_id in REQUEST_QUEUES:
+        q = REQUEST_QUEUES[request_id]
+        if status == 'completed':
+            q.put({'type': 'complete', 'progress': 100, 'message': 'Optimization complete'})
+            q.put(None) # Sentinel to close stream
+        elif status == 'error':
+            q.put({'type': 'error', 'message': message})
+            q.put(None)
+        else:
+            percentage = int((progress / total) * 100) if total > 0 else 0
+            q.put({'type': 'progress', 'progress': percentage, 'message': message})
+
+@app.route('/api/progress-stream/<request_id>', methods=['GET'])
+def stream_progress(request_id):
+    def event_stream():
+        # Lazy initialization: Allow connecting before POST
+        if request_id not in REQUEST_QUEUES:
+             REQUEST_QUEUES[request_id] = queue.Queue()
+        
+        q = REQUEST_QUEUES[request_id]
+        while True:
+            try:
+                # Wait for next event
+                event = q.get(timeout=600) # 10 min timeout
+                if event is None:
+                    break
+                
+                # Format as SSE
+                yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
+            except queue.Empty:
+                yield f"event: ping\ndata: keep-alive\n\n"
+            except Exception as e:
+                app.logger.error(f"SSE stream error: {str(e)}")
+                break
+        
+        # Cleanup
+        if request_id in REQUEST_QUEUES:
+            del REQUEST_QUEUES[request_id]
+
+    return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
 
 @app.route('/api/optimize-portfolio', methods=['POST'])
 def optimize_portfolio_endpoint():
@@ -295,47 +336,57 @@ def optimize_portfolio_endpoint():
     load_if_available = bool(data.get('load_if_available'))
     request_id = data.get('request_id')
 
-    # Initialize progress if request_id is provided
-    if request_id:
-        PROGRESS_STORE[request_id] = {'status': 'running', 'progress': 0, 'total': 100, 'message': 'Starting optimization...'}
+    if not request_id:
+        return jsonify({"error": "request_id is required"}), 400
 
-    def progress_callback(current, total, message):
-        if request_id:
-            PROGRESS_STORE[request_id] = {
-                'status': 'running',
-                'progress': current,
-                'total': total,
-                'message': message
-            }
-            # Simple cleanup for old keys could go here, but omitted for brevity
+    # Initialize Queue for SSE (Idempotent)
+    if request_id not in REQUEST_QUEUES:
+        REQUEST_QUEUES[request_id] = queue.Queue()
 
-    try:
-        optimized_portfolio = optimize_portfolio(
-            start_date=start_date, 
-            end_date=end_date, 
-            risk_free_rate=risk_free_rate, 
-            ticker_group=ticker_group, 
-            tickers=tickers, 
-            target_return=target_return, 
-            risk_tolerance=risk_tolerance,
-            portfolio_id=portfolio_id,
-            persist_result=persist_result,
-            load_if_available=load_if_available,
-            progress_callback=progress_callback
-        )
-        
-        if request_id:
-            PROGRESS_STORE[request_id] = {'status': 'completed', 'progress': 100, 'total': 100, 'message': 'Optimization completed'}
-            
-        return jsonify(optimized_portfolio)
-    except ValueError as ve:
-        if request_id:
-            PROGRESS_STORE[request_id] = {'status': 'error', 'message': str(ve)}
-        return jsonify({'error': str(ve)}), 400
-    except Exception as e:
-        if request_id:
-            PROGRESS_STORE[request_id] = {'status': 'error', 'message': str(e)}
-        return jsonify({'error': str(e)}), 500
+    def background_optimization(req_id, params):
+        try:
+            # Define callback adapter for weighted progress
+            def progress_adapter(current, total, message):
+                push_progress(req_id, current, total, message, status='running')
+
+            result = optimize_portfolio(
+                start_date=params['start_date'],
+                end_date=params['end_date'],
+                risk_free_rate=params['risk_free_rate'],
+                ticker_group=params['ticker_group'],
+                tickers=params['tickers'],
+                target_return=params['target_return'],
+                risk_tolerance=params['risk_tolerance'],
+                portfolio_id=params['portfolio_id'],
+                persist_result=params['persist_result'],
+                load_if_available=params['load_if_available'],
+                progress_callback=progress_adapter
+            )
+
+            if "error" in result:
+                push_progress(req_id, 0, 0, result["error"], status='error')
+            else:
+                 # Send result in complete message
+                 q = REQUEST_QUEUES[req_id]
+                 q.put({'type': 'complete', 'progress': 100, 'message': 'Optimization complete', 'result': result})
+                 q.put(None)
+
+        except Exception as e:
+            app.logger.error(f"Background optimization failed: {e}")
+            push_progress(req_id, 0, 0, str(e), status='error')
+
+    # Start background thread
+    params = {
+        'ticker_group': ticker_group, 'tickers': tickers, 'start_date': start_date, 
+        'end_date': end_date, 'risk_free_rate': risk_free_rate, 'target_return': target_return,
+        'risk_tolerance': risk_tolerance, 'portfolio_id': portfolio_id, 
+        'persist_result': persist_result, 'load_if_available': load_if_available
+    }
+    thread = threading.Thread(target=background_optimization, args=(request_id, params))
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({"message": "Optimization started", "request_id": request_id})
 
 
 @app.route('/api/portfolio-results', methods=['GET'])
@@ -372,4 +423,4 @@ def stock_screener_endpoint():
         return jsonify({"error": "An internal error occurred while screening stocks."}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)

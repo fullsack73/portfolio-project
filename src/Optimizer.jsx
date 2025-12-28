@@ -128,40 +128,50 @@ const Optimizer = () => {
         payload.ticker_group = tickerGroup
       }
 
-      // Start polling
-      pollInterval = setInterval(async () => {
-        try {
-          const progressRes = await axios.get(`http://127.0.0.1:5000/api/progress/${requestId}`)
-          const { progress, total, message, status } = progressRes.data
-          if (status === 'error') {
-            clearInterval(pollInterval)
-            return // Main request will handle error
-          }
+      // Start SSE connection
+      const eventSource = new EventSource(`http://127.0.0.1:5000/api/progress-stream/${requestId}`)
 
-          // Calculate percentage based on tickers processed
-          // If total is 0 (start), use arbitrary small number or 0
-          const percentage = total > 0 ? Math.round((progress / total) * 100) : 0
-          setProgress({ percentage, message })
-        } catch (e) {
-          console.warn("Progress polling failed", e)
-        }
-      }, 1000)
-
-      const response = await axios.post("http://127.0.0.1:5000/api/optimize-portfolio", payload)
-
-      if (response.data.error) {
-        setError(response.data.error)
-        setOptimizedPortfolio(null)
-      } else {
-        setOptimizedPortfolio(response.data)
+      eventSource.onmessage = (event) => {
+        // Ping/Keep-alive, ignore
       }
+
+      eventSource.addEventListener('progress', (e) => {
+        const data = JSON.parse(e.data)
+        setProgress({ percentage: data.progress, message: data.message })
+      })
+
+      eventSource.addEventListener('complete', (e) => {
+        const data = JSON.parse(e.data)
+        setProgress({ percentage: 100, message: 'Optimization complete!' })
+        eventSource.close()
+
+        // The result is passed in the complete event for simplicity in this refactor
+        if (data.result) {
+          setOptimizedPortfolio(data.result)
+        }
+        setLoading(false)
+      })
+
+      eventSource.addEventListener('error', (e) => {
+        if (e.data) {
+          const data = JSON.parse(e.data)
+          setError(data.message)
+        } else {
+          // Connection error or stream closed unexpectedly
+          // setError("Stream connection lost") 
+        }
+        eventSource.close()
+        setLoading(false)
+      })
+
+      // Initiate optimization
+      await axios.post("http://127.0.0.1:5000/api/optimize-portfolio", payload)
+
     } catch (err) {
-      setError(err.response ? err.response.data.error : "An error occurred")
+      console.error(err)
+      setError(err.response ? err.response.data.error : "An error occurred starting optimization")
       setOptimizedPortfolio(null)
-    } finally {
-      clearInterval(pollInterval)
       setLoading(false)
-      setProgress(null)
     }
   }
 
