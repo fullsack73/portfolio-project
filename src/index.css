@@ -91,12 +91,6 @@ h2 {
   transition: all 0.3s ease;
 }
 
-.chart-wrapper:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
 .date-input-container,
 .ticker-input-container {
   flex: 1;
