@@ -109,9 +109,8 @@ const StockScreener = () => {
     const handleDownloadCSV = () => {
         if (results.length === 0) return;
 
-        const headers = Object.keys(results[0]).join(',');
-        const rows = results.map(row => Object.values(row).join(','));
-        const csvData = [headers, ...rows].join('\n');
+        // Only export ticker symbols to match portfolio optimizer format (like nyse.csv)
+        const csvData = ['Symbol', ...results.map(row => row.Ticker)].join('\n');
 
         const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvData);
         const link = document.createElement('a');
