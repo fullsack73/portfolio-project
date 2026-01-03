@@ -127,7 +127,7 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
-.sidebar.open + .language-toggle {
+.sidebar.open+.language-toggle {
   opacity: 0;
   visibility: hidden;
   transform: translateX(-100%);
@@ -318,6 +318,9 @@ body {
   margin-bottom: var(--spacing-2xl);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
 }
 
 .optimizer-form-grid {
@@ -1139,7 +1142,8 @@ body {
 }
 
 .financial-table th:first-child {
-  z-index: 30; /* Intersection of sticky top and left */
+  z-index: 30;
+  /* Intersection of sticky top and left */
   background: var(--color-bg-elevated);
 }
 
@@ -1172,6 +1176,7 @@ body {
 .screener-title {
   text-align: center;
   margin-bottom: var(--spacing-2xl);
+  margin-top: var(--spacing-2xl);
 }
 
 .screener-controls-card {
@@ -1254,7 +1259,7 @@ body {
 }
 
 .premium-input {
-    background: var(--color-bg-tertiary);
+  background: var(--color-bg-tertiary);
 }
 
 .remove-filter-btn {
@@ -1371,21 +1376,22 @@ body {
 }
 
 .error-banner {
-    background: rgba(255, 71, 87, 0.1);
-    color: var(--color-danger);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-lg);
-    text-align: center;
-    border: 1px solid var(--color-danger);
+  background: rgba(255, 71, 87, 0.1);
+  color: var(--color-danger);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+  border: 1px solid var(--color-danger);
 }
 
 .empty-state {
-    text-align: center;
-    padding: var(--spacing-2xl);
-    color: var(--color-text-muted);
-    font-size: 1.1rem;
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
 }
+
 /* Updated entire stylesheet to match modern dark theme design */
 
 :root {
@@ -1479,7 +1485,14 @@ h2 {
   transition: all 0.3s ease;
 }
 
-.date-input-container,
+.date-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  flex: 1;
+  min-width: 200px;
+}
+
 .ticker-input-container {
   flex: 1;
   min-width: 200px;
@@ -1744,12 +1757,12 @@ input[type="number"]::-webkit-inner-spin-button {
   .benchmark-table {
     font-size: 0.875rem;
   }
-  
+
   .benchmark-table th,
   .benchmark-table td {
     padding: var(--spacing-sm);
   }
-  
+
   .comparison-grid {
     grid-template-columns: 1fr;
   }

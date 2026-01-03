@@ -106,7 +106,6 @@ const PortfolioBenchmark = () => {
     <div className="optimizer-container">
       <div className="optimizer-header">
         <h1>{t("benchmark.title")}</h1>
-        <p className="optimizer-subtitle">{t("benchmark.subtitle")}</p>
       </div>
 
       <form className="optimizer-form" onSubmit={handleSubmit}>
@@ -129,11 +128,6 @@ const PortfolioBenchmark = () => {
               ? `✓ ${portfolio.portfolio_id || t("benchmark.portfolioLoaded")}`
               : t("benchmark.chooseFile")}
           </button>
-          {portfolio && (
-            <p className="optimizer-hint">
-              {Object.keys(portfolio.weights).length} {t("benchmark.tickers")}
-            </p>
-          )}
         </div>
 
         {/* Budget Input */}
@@ -148,12 +142,10 @@ const PortfolioBenchmark = () => {
             step="0.01"
             min="0"
           />
-          <p className="optimizer-hint">{t("benchmark.budgetHint")}</p>
         </div>
 
         {/* Date Range */}
         <div className="optimizer-form-group">
-          <label className="optimizer-label">{t("benchmark.dateRange")}</label>
           <DateInput onDateRangeChange={handleDateRangeChange} />
         </div>
 
@@ -170,17 +162,18 @@ const PortfolioBenchmark = () => {
             min="0"
             max="100"
           />
-          <p className="optimizer-hint">{t("benchmark.riskFreeHint")}</p>
         </div>
 
         {/* Submit Button */}
-        <button
-          type="submit"
-          className="optimizer-submit-button"
-          disabled={loading || !portfolio || !budget || !startDate || !endDate}
-        >
-          {loading ? t("common.loading") : t("benchmark.analyze")}
-        </button>
+        <div style={{ display: "flex", justifyContent: "center", width: "100%" }}>
+          <button
+            type="submit"
+            className="optimizer-submit-button"
+            disabled={loading || !portfolio || !budget || !startDate || !endDate}
+          >
+            {loading ? t("common.loading") : t("benchmark.analyze")}
+          </button>
+        </div>
       </form>
 
       {/* Error Display */}

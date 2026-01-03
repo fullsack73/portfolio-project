@@ -122,10 +122,14 @@ def calculate_portfolio_benchmark(portfolio_data, budget, start_date, end_date, 
     
     # Calculate risk-free asset value for each date
     for date in sorted_dates:
+        # Convert to timezone-naive datetime to avoid timezone mismatch
         if isinstance(date, datetime):
-            days_elapsed = (date - start_date).days
+            date_naive = date.replace(tzinfo=None) if date.tzinfo else date
+            days_elapsed = (date_naive - start_date).days
         else:
-            days_elapsed = (date.to_pydatetime() - start_date).days
+            # For pandas Timestamp, convert to naive datetime
+            date_naive = date.to_pydatetime().replace(tzinfo=None)
+            days_elapsed = (date_naive - start_date).days
         
         # Compound interest formula: P * (1 + r)^(t/365)
         riskfree_value = budget * ((1 + risk_free_rate) ** (days_elapsed / 365))
