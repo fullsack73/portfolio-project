@@ -60,6 +60,16 @@ const Selector = ({ activeView, onViewChange, isOpen, onToggle }) => {
                         <span className="icon">⚙️</span>
                         {t('navigation.optimizer')}
                     </button>
+                    <button 
+                        className={`nav-item ${activeView === 'benchmark' ? 'active' : ''}`}
+                        onClick={() => {
+                            onViewChange('benchmark');
+                            onToggle();
+                        }}
+                    >
+                        <span className="icon">📊</span>
+                        {t('navigation.benchmark')}
+                    </button>
                 </nav>
             </div>
         </>

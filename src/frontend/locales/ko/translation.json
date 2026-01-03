@@ -3,7 +3,8 @@
     "stock": "주식 데이터",
     "hedge": "헷지 분석",
     "financial": "재무제표 분석",
-    "optimizer": "포트폴리오 최적화"
+    "optimizer": "포트폴리오 최적화",
+    "benchmark": "포트폴리오 벤치마크"
   },
   "date": {
     "start": "시작 날짜",
@@ -99,5 +100,42 @@
     "Under": "미만",
     "Over": "초과",
     "Avg": "평균"
+  },
+  "benchmark": {
+    "title": "포트폴리오 벤치마크",
+    "subtitle": "S&P 500 및 무위험 자산과 포트폴리오 성과 비교",
+    "uploadPortfolio": "포트폴리오 파일",
+    "chooseFile": "포트폴리오 JSON 선택",
+    "portfolioLoaded": "포트폴리오 로드됨",
+    "tickers": "종목",
+    "budget": "투자 예산",
+    "budgetHint": "총 투자 금액 ($)",
+    "dateRange": "날짜 범위",
+    "riskFreeRate": "무위험 이자율 (%)",
+    "riskFreeHint": "연간 무위험 이자율 (예: 4%의 경우 4)",
+    "analyze": "포트폴리오 분석",
+    "resultsTitle": "벤치마크 결과",
+    "chartTitle": "포트폴리오 성과 vs 벤치마크",
+    "date": "날짜",
+    "portfolioValue": "포트폴리오 가치 ($)",
+    "portfolio": "포트폴리오",
+    "sp500": "S&P 500",
+    "riskFree": "무위험 자산",
+    "investmentType": "투자 유형",
+    "initialValue": "초기 가치",
+    "finalValue": "최종 가치",
+    "profitLoss": "손익",
+    "returnPercent": "수익률 (%)",
+    "comparison": "성과 비교",
+    "vssp500": "포트폴리오 vs S&P 500",
+    "vsRiskFree": "포트폴리오 vs 무위험 자산",
+    "invalidFile": "잘못된 포트폴리오 파일 형식",
+    "missingFields": "포트폴리오 파일에 'weights' 및 'prices' 필드가 있어야 합니다",
+    "uploadError": "포트폴리오 파일 업로드 실패",
+    "readError": "포트폴리오 파일 읽기 실패",
+    "noPortfolio": "포트폴리오 파일을 업로드하세요",
+    "invalidBudget": "유효한 예산 금액을 입력하세요",
+    "noDateRange": "날짜 범위를 선택하세요",
+    "apiError": "벤치마크 계산 실패"
   }
 }

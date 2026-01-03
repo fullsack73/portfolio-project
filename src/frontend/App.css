@@ -1632,3 +1632,125 @@ input[type="number"]::-webkit-inner-spin-button {
     font-size: 20px;
   }
 }
+
+/* Benchmark Component Styles */
+.benchmark-results {
+  margin-top: var(--spacing-xl);
+}
+
+.benchmark-table-container {
+  margin-top: var(--spacing-xl);
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.benchmark-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-xl);
+}
+
+.benchmark-table thead {
+  background: var(--color-bg-elevated);
+}
+
+.benchmark-table th {
+  padding: var(--spacing-md);
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.benchmark-table td {
+  padding: var(--spacing-md);
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.benchmark-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.benchmark-table tbody tr:hover {
+  background: var(--color-bg-elevated);
+}
+
+.benchmark-name {
+  font-weight: 600;
+}
+
+.benchmark-table .positive {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.benchmark-table .negative {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.benchmark-comparison {
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-divider);
+}
+
+.benchmark-comparison h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  color: var(--color-text-primary);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.comparison-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-sm);
+}
+
+.comparison-label {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.comparison-item .positive {
+  color: var(--color-success);
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.comparison-item .negative {
+  color: var(--color-danger);
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+@media (max-width: 768px) {
+  .benchmark-table {
+    font-size: 0.875rem;
+  }
+  
+  .benchmark-table th,
+  .benchmark-table td {
+    padding: var(--spacing-sm);
+  }
+  
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+}

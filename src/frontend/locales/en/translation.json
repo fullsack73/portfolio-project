@@ -3,7 +3,8 @@
     "stock": "Stock Data",
     "hedge": "Hedge Analysis",
     "financial": "Financial Statement Analysis",
-    "optimizer": "Portfolio Optimizer"
+    "optimizer": "Portfolio Optimizer",
+    "benchmark": "Portfolio Benchmark"
   },
   "date": {
     "start": "Start Date",
@@ -99,5 +100,42 @@
     "Under": "Under",
     "Over": "Over",
     "Avg": "Avg"
+  },
+  "benchmark": {
+    "title": "Portfolio Benchmark",
+    "subtitle": "Compare your portfolio performance against S&P 500 and risk-free assets",
+    "uploadPortfolio": "Portfolio File",
+    "chooseFile": "Choose Portfolio JSON",
+    "portfolioLoaded": "Portfolio Loaded",
+    "tickers": "tickers",
+    "budget": "Investment Budget",
+    "budgetHint": "Total amount to invest ($)",
+    "dateRange": "Date Range",
+    "riskFreeRate": "Risk-Free Rate (%)",
+    "riskFreeHint": "Annual risk-free rate (e.g., 4 for 4%)",
+    "analyze": "Analyze Portfolio",
+    "resultsTitle": "Benchmark Results",
+    "chartTitle": "Portfolio Performance vs Benchmarks",
+    "date": "Date",
+    "portfolioValue": "Portfolio Value ($)",
+    "portfolio": "Portfolio",
+    "sp500": "S&P 500",
+    "riskFree": "Risk-Free Asset",
+    "investmentType": "Investment Type",
+    "initialValue": "Initial Value",
+    "finalValue": "Final Value",
+    "profitLoss": "Profit/Loss",
+    "returnPercent": "Return (%)",
+    "comparison": "Performance Comparison",
+    "vssp500": "Portfolio vs S&P 500",
+    "vsRiskFree": "Portfolio vs Risk-Free",
+    "invalidFile": "Invalid portfolio file format",
+    "missingFields": "Portfolio file must contain 'weights' and 'prices' fields",
+    "uploadError": "Failed to upload portfolio file",
+    "readError": "Failed to read portfolio file",
+    "noPortfolio": "Please upload a portfolio file",
+    "invalidBudget": "Please enter a valid budget amount",
+    "noDateRange": "Please select a date range",
+    "apiError": "Failed to calculate benchmarks"
   }
 }

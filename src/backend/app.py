@@ -5,6 +5,7 @@ import yfinance as yf
 from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
 from hedge_analysis import analyze_hedge_relationship
+from portfolio_benchmark import calculate_portfolio_benchmark
 
 import lightgbm as lgb
 import pandas as pd
@@ -421,6 +422,93 @@ def stock_screener_endpoint():
         # Log the exception for debugging
         app.logger.error(f"Stock screener failed with exception: {e}")
         return jsonify({"error": "An internal error occurred while screening stocks."}), 500
+
+@app.route('/api/benchmark-portfolio', methods=['POST'])
+def benchmark_portfolio_endpoint():
+    """
+    Benchmark a portfolio against S&P 500 and risk-free assets.
+    
+    Request JSON:
+        portfolio_data: dict with weights and prices
+        budget: float (investment amount)
+        start_date: string (YYYY-MM-DD format)
+        end_date: string (YYYY-MM-DD format)
+        risk_free_rate: float (annual rate as decimal, e.g., 0.04)
+    
+    Returns:
+        JSON with portfolio_timeline, sp500_timeline, riskfree_timeline, and summary
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate request data
+        if not data:
+            return jsonify({'error': 'Request must be JSON'}), 400
+        
+        required_fields = ['portfolio_data', 'budget', 'start_date', 'end_date', 'risk_free_rate']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        # Extract and validate parameters
+        portfolio_data = data.get('portfolio_data')
+        budget = data.get('budget')
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
+        risk_free_rate = data.get('risk_free_rate')
+        
+        # Validate budget
+        try:
+            budget = float(budget)
+            if budget <= 0:
+                return jsonify({'error': 'Budget must be a positive number'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Budget must be a valid number'}), 400
+        
+        # Validate risk-free rate
+        try:
+            risk_free_rate = float(risk_free_rate)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'Risk-free rate must be a valid number'}), 400
+        
+        # Validate date range
+        try:
+            start_date, end_date = validate_date_range(start_date_str, end_date_str)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+        
+        # Validate portfolio data structure
+        if not isinstance(portfolio_data, dict):
+            return jsonify({'error': 'Portfolio data must be an object'}), 400
+        
+        if 'weights' not in portfolio_data or 'prices' not in portfolio_data:
+            return jsonify({
+                'error': 'Portfolio data must contain "weights" and "prices" fields'
+            }), 400
+        
+        # Calculate benchmark
+        result = calculate_portfolio_benchmark(
+            portfolio_data, 
+            budget, 
+            start_date, 
+            end_date, 
+            risk_free_rate
+        )
+        
+        return jsonify(result), 200
+        
+    except ValueError as e:
+        # Handle validation errors from calculation module
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        # Handle unexpected errors
+        app.logger.error(f"Portfolio benchmarking failed: {str(e)}")
+        return jsonify({
+            'error': 'An internal error occurred while benchmarking the portfolio'
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True)
