@@ -73,21 +73,35 @@ def calculate_portfolio_benchmark(portfolio_data, budget, start_date, end_date, 
     # Calculate shares for each ticker based on weights and initial prices
     shares = {}
     for ticker, weight in weights.items():
-        if ticker in portfolio_history and ticker in prices:
+        if ticker in portfolio_history: # ticker needs to be in history to get start price
             ticker_budget = budget * weight
-            initial_price = prices[ticker]
+            
+            # CRITICAL FIX: Use the price at start_date, NOT the 'prices' argument (which is latest price)
+            # Find the first available date in the history
+            ticker_dates = sorted(portfolio_history[ticker].keys())
+            if not ticker_dates:
+                print(f"Warning: No history data for {ticker}, skipping")
+                continue
+                
+            first_date = ticker_dates[0]
+            initial_price = portfolio_history[ticker][first_date]
             
             # Handle zero or invalid prices
             if initial_price > 0:
                 shares[ticker] = ticker_budget / initial_price
             else:
-                print(f"Warning: Invalid price for {ticker}, skipping")
+                print(f"Warning: Invalid start price for {ticker}, skipping")
                 shares[ticker] = 0
-    
+                
     # Calculate S&P 500 shares
     sp500_dates = list(sp500_history.keys())
-    sp500_initial_price = sp500_history[sp500_dates[0]]
-    sp500_shares = budget / sp500_initial_price if sp500_initial_price > 0 else 0
+    # Sort just in case dictionary isn't ordered
+    sp500_dates.sort()
+    if sp500_dates:
+        sp500_initial_price = sp500_history[sp500_dates[0]]
+        sp500_shares = budget / sp500_initial_price if sp500_initial_price > 0 else 0
+    else:
+        sp500_shares = 0
     
     # Build timelines
     portfolio_timeline = {}

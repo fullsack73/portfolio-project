@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 import time
+from datetime import datetime, timedelta
 
 import yfinance as yf
 import pandas as pd
@@ -603,10 +604,66 @@ def optimize_portfolio(start_date, end_date, risk_free_rate, ticker_group=None, 
     def ml_callback(current, total, message):
         _weighted_progress(30, 90, current, total, message)
 
-    # Calculate expected returns using ML-based forecasting with fallback to lightweight
-    logger.info(f"Starting ML forecasting for {len(data.columns)} tickers: {list(data.columns)}")
-    # Strict ML-only forecasting
-    mu = ml_forecast_returns(data, use_lightweight=False, progress_callback=ml_callback)
+    # Determine if we are doing Ex-Post (Historical) or Ex-Ante (Future) analysis
+    # If end_date is significantly in the past (> 90 days), assume Ex-Post analysis
+    is_ex_post = False
+    try:
+        # Handle string or datetime input
+        if isinstance(end_date, str):
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+        else:
+            end_dt = end_date
+            
+        if end_dt < datetime.now() - timedelta(days=90):
+            is_ex_post = True
+            logger.info(f"Optimization end date {end_dt.date()} is >90 days in the past. Switching to Ex-Post (Historical) Optimization.")
+    except Exception as e:
+        logger.warning(f"Could not parse date for Ex-Post check: {e}")
+
+    if is_ex_post:
+        logger.info("Using Historical CAGR for Ex-Post Optimization")
+        
+        # Calculate CAGR (Geometric Mean) instead of Arithmetic Mean
+        # Formula: (End_Price / Start_Price) ^ (252 / Days) - 1
+        # This penalizes volatility drag compared to arithmetic mean
+        cagr_series = {}
+        for ticker in data.columns:
+            try:
+                # Get valid price series
+                prices = data[ticker].dropna()
+                if len(prices) >= 2:
+                    start_price = prices.iloc[0]
+                    end_price = prices.iloc[-1]
+                    
+                    if start_price > 0:
+                        # Calculate total return
+                        total_return = end_price / start_price
+                        
+                        # Calculate years elapsed (using business days approx)
+                        years = len(prices) / 252.0
+                        
+                        # Calculate CAGR
+                        if total_return > 0 and years > 0:
+                            cagr = (total_return ** (1 / years)) - 1
+                        else:
+                            cagr = -0.99 # Effectively -100%
+                            
+                        cagr_series[ticker] = cagr
+                    else:
+                        cagr_series[ticker] = 0.0
+                else:
+                    cagr_series[ticker] = 0.0
+            except Exception as e:
+                logger.warning(f"Failed to calculate CAGR for {ticker}: {e}")
+                cagr_series[ticker] = 0.0
+                
+        mu = pd.Series(cagr_series)
+        # Handle potential NaNs
+        mu = mu.fillna(0)
+    else:
+        # Calculate expected returns using ML-based forecasting with fallback to lightweight
+        logger.info(f"Starting ML forecasting (Ex-Ante) for {len(data.columns)} tickers")
+        mu = ml_forecast_returns(data, use_lightweight=False, progress_callback=ml_callback)
     logger.info(f"ML forecasting completed. Got forecasts for {len(mu)} tickers: {list(mu.index)}")
     
     # Check for any missing tickers
